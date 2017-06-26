@@ -29,13 +29,12 @@ varying vec3 model_pos_;
 varying vec3 camera_pos_;
 
 void main() {
-  vec4 diffuse = texture2D(particle_diffuse, vec2(uv_.x, uv_.y + time * 0.5));
+  vec4 diffuse = texture2D(particle_diffuse, vec2(uv_.x, uv_.y));
+  vec4 mask = texture2D(particle_mask, vec2(uv_.x, uv_.y));
 
-  vec4 mask = texture2D(particle_mask, uv_);
-
-  vec4 overlay = texture2D(overlay_diffuse, vec2(overlay_uv_.x, overlay_uv_.y - time * 0.4));
+  vec4 overlay = texture2D(overlay_diffuse, vec2(overlay_uv_.x, overlay_uv_.y - time));
   vec4 overlay_mask = texture2D(overlay_mask, vec2(overlay_uv_.x, overlay_uv_.y));
-  vec4 overlay_noise = texture2D(overlay_noise, vec2(overlay_uv_.x - time * 0.05, overlay_uv_.y - time * 0.15));
+  vec4 overlay_noise = texture2D(overlay_noise, vec2(overlay_uv_.x, overlay_uv_.y));
   //diffuse = vec4(max(diffuse.xyz, (overlay.xyz*0.7)), max(max(diffuse.xyz));
   
   
@@ -61,6 +60,6 @@ void main() {
 
   diffuse = mix(diffuse, overlay, 0.4);
   gl_FragColor = vec4(diffuse.xyz, mask.x);
-  //gl_FragColor = vec4(overlay.xyz, overlay_mask.x);
+  //gl_FragColor = vec4(panner.x, panner.y, panner.z, 1.0);
 }
 

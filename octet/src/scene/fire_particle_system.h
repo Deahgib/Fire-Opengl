@@ -5,13 +5,10 @@ namespace octet {
     /// Note all particles in the system must use the same material, but you
     /// can use a custom shader to select different effects.
     class fire_particle_system : public mesh_particle_system {
-    public:
-      struct fire_particle : billboard_particle {
-        vec2p scale_size;             /// half-size in world space
-      };
-
-
     private:
+      vec4 concat_atlas_uvs[4];
+      bool using_atlas_;
+
       vec3 applyTransform(mat4t trans, vec3 pos_in) {
         vec4 out = trans * vec4(pos_in, 0);
         return vec3(out[0], out[1], out[2]);
@@ -33,12 +30,19 @@ namespace octet {
       }
 
 
+      random rand;
+
     public:
       RESOURCE_META(fire_particle_system)
 
       /// Default constructor
-      fire_particle_system(aabb_in size = aabb(vec3(0, 0, 0), vec3(1, 1, 1)), int bbcap = 256, int tpcap = 256, int pacap = 256) {
+      fire_particle_system(aabb_in size = aabb(vec3(0, 0, 0), vec3(1, 1, 1)), int bbcap = 256, int tpcap = 256, int pacap = 256, bool using_atlas = false) {
         init(size, bbcap, tpcap, pacap);
+        concat_atlas_uvs[0] = vec4(0.0f, 1.0f, 0.5f, 0.5f);
+        concat_atlas_uvs[1] = vec4(0.0f, 0.5f, 0.5f, 0.0f);
+        concat_atlas_uvs[2] = vec4(0.5f, 1.0f, 1.0f, 0.5f);
+        concat_atlas_uvs[3] = vec4(0.5f, 0.5f, 1.0f, 0.0f);
+        using_atlas_ = using_atlas;
       }
 
       vec2 get_size_for_age(uint32_t age_, uint32_t lifetime_) {
@@ -68,6 +72,8 @@ namespace octet {
 
       /// Update the vertices for newtonian physics.
       void animate(float time_step) {
+        vec3 wind = vec3(0.1f, 0.0f, 0.0f);
+        vec3 wind_turb = vec3(rand.get(-1.0f, 1.0f), rand.get(-0.3f, 0.3f), rand.get(-1.0f, 1.0f));
         for (unsigned i = 0; i != particle_animators.size(); ++i) {
           particle_animator &g = particle_animators[i];
           if (g.link >= 0) {
@@ -81,10 +87,34 @@ namespace octet {
             else {
               p.pos = (vec3)p.pos + (vec3)g.vel * time_step;
               g.vel = (vec3)g.vel + (vec3)g.acceleration * time_step;
+              //g.vel = (vec3)g.vel + wind_turb*0.3f + wind;
               p.angle += (uint32_t)(g.spin * time_step);
               p.size = get_size_for_age(g.age, g.lifetime) * 5.0f;
               //p.size = vec2p(3.0f, 3.0f);
               g.age++;
+
+              if (using_atlas_) {
+                float change_uvs = rand.get(0.0f, 1.0f);
+                if (change_uvs > 0.99f){
+                  float tex_toggle = rand.get(0.0f, 1.0f);
+                  if (tex_toggle < 0.25f) {
+                    p.uv_bottom_left = vec2p(concat_atlas_uvs[0][0], concat_atlas_uvs[0][1]);
+                    p.uv_top_right = vec2p(concat_atlas_uvs[0][2], concat_atlas_uvs[0][3]);
+                  }
+                  else if (tex_toggle < 0.5f) {
+                    p.uv_bottom_left = vec2p(concat_atlas_uvs[1][0], concat_atlas_uvs[1][1]);
+                    p.uv_top_right = vec2p(concat_atlas_uvs[1][2], concat_atlas_uvs[1][3]);
+                  }
+                  else if (tex_toggle < 0.75f) {
+                    p.uv_bottom_left = vec2p(concat_atlas_uvs[2][0], concat_atlas_uvs[2][1]);
+                    p.uv_top_right = vec2p(concat_atlas_uvs[2][2], concat_atlas_uvs[2][3]);
+                  }
+                  else {
+                    p.uv_bottom_left = vec2p(concat_atlas_uvs[3][0], concat_atlas_uvs[3][1]);
+                    p.uv_top_right = vec2p(concat_atlas_uvs[3][2], concat_atlas_uvs[3][3]);
+                  }
+                }
+              }
             }
           }
         }
