@@ -140,7 +140,7 @@ namespace octet {
     app(int argc, char **argv) {
     }
 
-    void init() {
+    void init(int windowW = 600, int windowH = 600) {
       WSADATA wsa;
       WSAStartup(MAKEWORD(2,2), &wsa);
 
@@ -158,7 +158,7 @@ namespace octet {
       gl_context = 0;
      
       window_handle = CreateWindowW(L"MyClass", L"octet",
-        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 768, 768,
+        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, windowW, windowH,
         NULL, NULL, wndclass.hInstance, (LPVOID)this
       );
 

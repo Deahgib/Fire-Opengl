@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
 
   // our application.
   octet::fire_opengl app(argc, argv);
-  app.init();
+  app.init(1200, 1200);
 
   // open windows
   octet::app::run_all_apps();

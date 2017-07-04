@@ -43,7 +43,7 @@ namespace octet {
 
       ci = app_scene->get_camera_instance(0);
       ci->get_node()->translate(vec3(0,0,30));
-
+      ci->set_far_plane(1000.0f);
       camera_movement = new camera_controller(this);
       camera_movement->add_camera(ci);
 
