@@ -100,7 +100,8 @@ namespace octet {
 
       fire_particle_system::fire_billboard_particle p;
       memset(&p, 0, sizeof(p));
-      p.pos = vec3p(worldCoord[0] + r->get(-1.0f, 1.0f), worldCoord[1] + r->get(-1.0f, 1.0f), worldCoord[2] + r->get(-1.0f, 1.0f));
+      //p.pos = vec3p(worldCoord[0] + r->get(-1.0f, 1.0f), worldCoord[1] + r->get(-1.0f, 1.0f), worldCoord[2] + r->get(-1.0f, 1.0f));
+      p.pos = vec3p(worldCoord[0], worldCoord[1], worldCoord[2]);
       if(using_atlas_){
         if (tex_toggle < 0.25f) {
           p.uv_bottom_left = vec2p(0.0f, 1.0f);
@@ -134,10 +135,10 @@ namespace octet {
       mesh_particle_system::particle_animator pa;
       memset(&pa, 0, sizeof(pa));
       pa.link = pidx;
-      pa.acceleration = vec3p(0, 100.0f, 0);
+      pa.acceleration = vec3p(0, 20.0f, 0);
       pa.vel = vec3p(r->get(-2.0f, 2.0f), 1.0f, r->get(-2.0f, 2.0f));
       //pa.spin = pow(2,31);
-      pa.lifetime = 50;
+      pa.lifetime = 75;
       system->add_particle_animator(pa);
 
       fire_material->set_uniform(time_index, &time, sizeof(time));

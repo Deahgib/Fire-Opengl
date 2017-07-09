@@ -59,7 +59,7 @@ void main() {
 
 
   diffuse = mix(diffuse, overlay, 0.4);
-  gl_FragColor = vec4(diffuse.xyz, mask.x);
+  gl_FragColor = vec4(diffuse.xyz, mask.x * color_.a);
   //gl_FragColor = vec4(panner.x, panner.y, panner.z, 1.0);
 }
 

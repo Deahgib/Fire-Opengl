@@ -104,11 +104,17 @@ namespace octet {
       }
 
       vec4 get_color_for_age(uint32_t age_, uint32_t lifetime_) {
-        float lifeStep = (float)lifetime_ * 0.1f;
+        float lifeStep = (float)lifetime_ * 0.2f;
         float age = (float)age_;
         float alpha;
         if (age < lifeStep) {
-          alpha = smoothstep(0, lifeStep, age);
+          alpha = smoothstep(0.0f, lifeStep, age);
+        }
+        else if (age > (float)lifetime_ - lifeStep) {
+          alpha = 1.0f - smoothstep((float)lifetime_ - lifeStep, (float)lifetime_, age);
+        }
+        else {
+          alpha = 1.0f;
         }
         /*if (age >= lifeStep && age < 2 * lifeStep) {
           ss = (1.0f - smoothstep(lifeStep, 2.0f * lifeStep, age)) * 0.5f + 0.5f;
@@ -139,7 +145,7 @@ namespace octet {
               //g.vel = (vec3)g.vel + wind_turb*0.3f + wind;
               p.angle += (uint32_t)(g.spin * time_step);
               p.size = get_size_for_age(g.age, g.lifetime) * 5.0f;
-              
+              p.color = get_color_for_age(g.age, g.lifetime);
               //p.size = vec2p(3.0f, 3.0f);
               g.age++;
 
@@ -197,10 +203,10 @@ namespace octet {
             vec2 tl = vec2(bl.x(), tr.y());
             vec2 br = vec2(tr.x(), bl.y());
 
-            vtx->pos = (vec3)p.pos - dx + dy; vtx->normal = n; vtx->uv = tl; vtx->color = vec4(1.0f, 1.0f, 1.0f, 0.1f); vtx++;
-            vtx->pos = (vec3)p.pos + dx + dy; vtx->normal = n; vtx->uv = tr; vtx++;
-            vtx->pos = (vec3)p.pos + dx - dy; vtx->normal = n; vtx->uv = br; vtx++;
-            vtx->pos = (vec3)p.pos - dx - dy; vtx->normal = n; vtx->uv = bl; vtx++;
+            vtx->pos = (vec3)p.pos - dx + dy; vtx->normal = n; vtx->uv = tl; vtx->color = p.color; vtx++;
+            vtx->pos = (vec3)p.pos + dx + dy; vtx->normal = n; vtx->uv = tr; vtx->color = p.color; vtx++;
+            vtx->pos = (vec3)p.pos + dx - dy; vtx->normal = n; vtx->uv = br; vtx->color = p.color; vtx++;
+            vtx->pos = (vec3)p.pos - dx - dy; vtx->normal = n; vtx->uv = bl; vtx->color = p.color; vtx++;
 
             idx[0] = num_vertices; idx[1] = num_vertices + 1; idx[2] = num_vertices + 2;
             idx[3] = num_vertices; idx[4] = num_vertices + 2; idx[5] = num_vertices + 3;
