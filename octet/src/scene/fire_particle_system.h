@@ -5,6 +5,14 @@ namespace octet {
     /// Note all particles in the system must use the same material, but you
     /// can use a custom shader to select different effects.
     class fire_particle_system : public mesh_particle_system {
+    public:
+      struct fire_vertex : vertex {
+        vec4 color;
+      };
+
+      struct fire_billboard_particle : billboard_particle {
+        vec4 color;
+      };
     private:
       vec4 concat_atlas_uvs[4];
       bool using_atlas_;
@@ -31,6 +39,32 @@ namespace octet {
 
 
       random rand;
+
+      dynarray<fire_billboard_particle> fire_billboard_particles;
+
+
+    protected:
+      void init(const aabb &size, int bbcap, int tpcap, int pacap) {
+
+        add_attribute(attribute_pos, 3, GL_FLOAT, 0);
+        add_attribute(attribute_normal, 3, GL_FLOAT, 12);
+        add_attribute(attribute_uv, 2, GL_FLOAT, 24);
+        add_attribute(attribute_color, 4, GL_FLOAT, 32);
+        set_params(48, 0, 0, GL_TRIANGLES, GL_UNSIGNED_INT);
+
+        set_aabb(size);
+        fire_billboard_particles.reserve(bbcap);
+        trail_particles.reserve(tpcap);
+        particle_animators.reserve(pacap);
+        free_billboard_particle = -1;
+        free_trail_particle = -1;
+        free_particle_animator = -1;
+
+        unsigned vsize = (bbcap * 4 + tpcap * 2) * sizeof(fire_vertex);
+        unsigned isize = (bbcap * 6 + tpcap * 6) * sizeof(uint32_t);
+        mesh::allocate(vsize, isize);
+      }
+
 
     public:
       RESOURCE_META(fire_particle_system)
@@ -69,6 +103,21 @@ namespace octet {
         //return vec2p(1, 1);
       }
 
+      vec4 get_color_for_age(uint32_t age_, uint32_t lifetime_) {
+        float lifeStep = (float)lifetime_ * 0.1f;
+        float age = (float)age_;
+        float alpha;
+        if (age < lifeStep) {
+          alpha = smoothstep(0, lifeStep, age);
+        }
+        /*if (age >= lifeStep && age < 2 * lifeStep) {
+          ss = (1.0f - smoothstep(lifeStep, 2.0f * lifeStep, age)) * 0.5f + 0.5f;
+        }
+        if (age >= 2 * lifeStep) {
+          ss = (1.0f - smoothstep(2.0f * lifeStep, (float)lifetime_, age)) * 0.5f;
+        }*/
+        return vec4(1.0f, 1.0f, 1.0f, alpha);
+      }
 
       /// Update the vertices for newtonian physics.
       void animate(float time_step) {
@@ -77,10 +126,10 @@ namespace octet {
         for (unsigned i = 0; i != particle_animators.size(); ++i) {
           particle_animator &g = particle_animators[i];
           if (g.link >= 0) {
-            billboard_particle &p = billboard_particles[g.link];
+            fire_billboard_particle &p = fire_billboard_particles[g.link];
             if (g.age >= g.lifetime) {
               p.enabled = false;
-              free(billboard_particles, free_billboard_particle, g.link);
+              free(fire_billboard_particles, free_billboard_particle, g.link);
               g.link = -1;
               free(particle_animators, free_particle_animator, i);
             }
@@ -90,6 +139,7 @@ namespace octet {
               //g.vel = (vec3)g.vel + wind_turb*0.3f + wind;
               p.angle += (uint32_t)(g.spin * time_step);
               p.size = get_size_for_age(g.age, g.lifetime) * 5.0f;
+              
               //p.size = vec2p(3.0f, 3.0f);
               g.age++;
 
@@ -126,7 +176,7 @@ namespace octet {
         //unsigned isize = billboard_particles.capacity() * sizeof(uint32_t) * 4;
 
         gl_resource::wolock vlock(get_vertices());
-        vertex *vtx = (vertex*)vlock.u8();
+        fire_vertex *vtx = (fire_vertex*)vlock.u8();
         gl_resource::wolock ilock(get_indices());
         uint32_t *idx = ilock.u32();
         unsigned num_vertices = 0;
@@ -136,8 +186,8 @@ namespace octet {
         vec3 cy = cameraToWorld.y().xyz();
         vec3 n = cameraToWorld.z().xyz();
         mat4t transform;
-        for (unsigned i = 0; i != billboard_particles.size(); ++i) {
-          billboard_particle &p = billboard_particles[i];
+        for (unsigned i = 0; i != fire_billboard_particles.size(); ++i) {
+          fire_billboard_particle &p = fire_billboard_particles[i];
           if (p.enabled) {
             vec2 size = p.size;
             vec3 dx = size.x() * cx;
@@ -147,7 +197,7 @@ namespace octet {
             vec2 tl = vec2(bl.x(), tr.y());
             vec2 br = vec2(tr.x(), bl.y());
 
-            vtx->pos = (vec3)p.pos - dx + dy; vtx->normal = n; vtx->uv = tl; vtx++;
+            vtx->pos = (vec3)p.pos - dx + dy; vtx->normal = n; vtx->uv = tl; vtx->color = vec4(1.0f, 1.0f, 1.0f, 0.1f); vtx++;
             vtx->pos = (vec3)p.pos + dx + dy; vtx->normal = n; vtx->uv = tr; vtx++;
             vtx->pos = (vec3)p.pos + dx - dy; vtx->normal = n; vtx->uv = br; vtx++;
             vtx->pos = (vec3)p.pos - dx - dy; vtx->normal = n; vtx->uv = bl; vtx++;
@@ -165,6 +215,15 @@ namespace octet {
         //dump(log("mesh\n"));
       }
     
+
+      /// Add a billboard particle. Returns -1 if capacity reached.
+      int add_billboard_particle(const fire_billboard_particle &p) {
+        int i = allocate(fire_billboard_particles, free_billboard_particle);
+        if (i != -1) {
+          fire_billboard_particles[i] = p;
+        }
+        return i;
+      }
     };
   }
 }

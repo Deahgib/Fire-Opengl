@@ -91,14 +91,14 @@ namespace octet {
       atom_t atom_overlay_noise = app_utils::get_atom("overlay_noise");
       overlay_noise = fire_material->add_sampler(slot_overlay_noise, atom_overlay_noise, overlay_noise_img, new sampler());
 
-      system = new fire_particle_system(aabb(vec3(0, 0, 0), vec3(1, 1, 1)), 50, 256, 256, using_atlas);
+      system = new fire_particle_system(aabb(vec3(0, 0, 0), vec3(1, 1, 1)), 256, 256, 256, using_atlas);
     }
   
     void update(camera_instance* ci, float time) {
       float tex_toggle = r->get(0.0f, 1.0f);
 
 
-      fire_particle_system::billboard_particle p;
+      fire_particle_system::fire_billboard_particle p;
       memset(&p, 0, sizeof(p));
       p.pos = vec3p(worldCoord[0] + r->get(-1.0f, 1.0f), worldCoord[1] + r->get(-1.0f, 1.0f), worldCoord[2] + r->get(-1.0f, 1.0f));
       if(using_atlas_){
