@@ -1,4 +1,7 @@
 #pragma once
+
+#include "fluid_simulator.h"
+
 namespace octet {
   namespace scene {
     /// Particle system: billboards, trails and cloth.
@@ -14,6 +17,8 @@ namespace octet {
         vec4 color;
       };
     private:
+      fluid_simulator fluid_sim;
+
       vec4 concat_atlas_uvs[4];
       bool using_atlas_;
 
@@ -45,6 +50,8 @@ namespace octet {
 
     protected:
       void init(const aabb &size, int bbcap, int tpcap, int pacap) {
+
+        fluid_sim.init(40);
 
         add_attribute(attribute_pos, 3, GL_FLOAT, 0);
         add_attribute(attribute_normal, 3, GL_FLOAT, 12);
@@ -122,11 +129,13 @@ namespace octet {
         if (age >= 2 * lifeStep) {
           ss = (1.0f - smoothstep(2.0f * lifeStep, (float)lifetime_, age)) * 0.5f;
         }*/
-        return vec4(1.0f, 1.0f, 1.0f, alpha);
+        return vec4(0.0f, 0.0f, 1.0f, alpha);
       }
 
       /// Update the vertices for newtonian physics.
       void animate(float time_step) {
+        fluid_sim.update(time_step);
+
         vec3 wind = vec3(0.1f, 0.0f, 0.0f);
         vec3 wind_turb = vec3(rand.get(-1.0f, 1.0f), rand.get(-0.3f, 0.3f), rand.get(-1.0f, 1.0f));
         for (unsigned i = 0; i != particle_animators.size(); ++i) {
@@ -180,7 +189,6 @@ namespace octet {
         //unsigned np = billboard_particles.size();
         //unsigned vsize = billboard_particles.capacity() * sizeof(vertex) * 4;
         //unsigned isize = billboard_particles.capacity() * sizeof(uint32_t) * 4;
-
         gl_resource::wolock vlock(get_vertices());
         fire_vertex *vtx = (fire_vertex*)vlock.u8();
         gl_resource::wolock ilock(get_indices());
