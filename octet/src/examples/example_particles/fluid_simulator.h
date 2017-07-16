@@ -1,268 +1,288 @@
 #pragma once
 
-#define IX(x, y, z) ((x) + (dim+2)*(y) + (dim+2)*(dim+2)*(z))
+#define IX(i,j,k) ((i)+(x_length+2)*(j) + (x_length+2)*(y_length+2)*(k))
 #define SWAP(x0, x) {float *tmp = x0; x0 = x; x = tmp;}
+
+#define MAX(a,b)            (((a) > (b)) ? (a) : (b))
 
 namespace octet {
   /// Scene containing a particle system
   class fluid_simulator {
+  private:
     int size;
-    int dim;
+    int x_length, y_length, z_length;
 
-    const int LINEARSOLVERTIMES = 10;
-
-    float *densities; // Densities
-    float *densities_prev; // Densities
-
-    float *vel_x;
-    float *vel_y;
-    float *vel_z;
-
-    float *vel_x_prev;
-    float *vel_y_prev;
-    float *vel_z_prev;
+    float * u, *v, *w, *u_prev, *v_prev, *w_prev;
+    float * dens, *dens_prev;
 
     float diffuse_rate;
     float viscosity;
 
+    const int LINEARSOLVERTIMES = 10;
 
-  private:
-
-    void advect(int b, float * d, float * d0, float * u, float * v, float * w, float dt) {
-      int x0, y0, z0, x1, y1, z1;
-      float vx, vy, vz, r0, s0, t0, r1, s1, t1, dt0;
-      dt0 = dt*dim;
-      for (int z = 1; z <= dim; z++) {
-        for (int y = 1; y <= dim; y++) {
-          for (int x = 1; x <= dim; x++) {
-            vx = x - dt0 * u[IX(x, y, z)];
-            vy = y - dt0 * v[IX(x, y, z)];
-            vz = z - dt0 * w[IX(x, y, z)];
-            if (vx < 0.5) vx = 0.5; if (vx > dim + 0.5) vx = dim + 0.5; x0 = (int)vx; x1 = x0 + 1;
-            if (vy < 0.5) vy = 0.5; if (vy > dim + 0.5) vy = dim + 0.5; y0 = (int)vy; y1 = y0 + 1;
-            if (vz < 0.5) vz = 0.5; if (vz > dim + 0.5) vz = dim + 0.5; z0 = (int)vz; z1 = z0 + 1;
-
-            r1 = vx - x0; r0 = 1 - r1;
-            s1 = vy - y0; s0 = 1 - s1;
-            t1 = vz - z0; t0 = 1 - t1;
-
-            d[IX(x, y, z)] =
-              r0*(s0*t0*d0[IX(x0, y0, z0)] + s1*t0*d0[IX(x0, y1, z0)] + s0*t1*d0[IX(x0, y0, z1)] + s1*t1*d0[IX(x0, y1, z1)]) +
-              r1*(s0*t0*d0[IX(x1, y0, z0)] + s1*t0*d0[IX(x1, y1, z0)] + s0*t1*d0[IX(x1, y0, z1)] + s1*t1*d0[IX(x1, y1, z1)]);
-          }
-        }
-        set_bnd(b, d);
-      }
-    }
-
-    void diffuse(int b, float* p, float* p0, float diff, float dt) {
-      float a = dt * diff * dim * dim * dim;
-      lin_solve(b, p, p0, a, 1 + 6 * a);
-    }
-
-    void project(float * u, float * v, float * w, float * p, float * div)
+    void free_data()
     {
-      int x, y, z;
-
-      for (z = 1; z <= dim; z++) {
-        for (y = 1; y <= dim; y++) {
-          for (x = 1; x <= dim; x++) {
-            div[IX(x, y, z)] = -1.0 / 3.0*((u[IX(x + 1, y, z)] - u[IX(x - 1, y, z)]) / dim + (v[IX(x, y + 1, z)] - v[IX(x, y - 1, z)]) / dim + (w[IX(x, y, z + 1)] - w[IX(x, y, z - 1)]) / dim);
-            p[IX(x, y, z)] = 0;
-          }
-        }
-      }
-
-      set_bnd(0, div); set_bnd(0, p);
-
-      lin_solve(0, p, div, 1, 6);
-
-      for (z = 1; z <= dim; z++) {
-        for (y = 1; y <= dim; y++) {
-          for (x = 1; x <= dim; x++) {
-            u[IX(x, y, z)] -= 0.5f*dim*(p[IX(x + 1, y, z)] - p[IX(x - 1, y, z)]);
-            v[IX(x, y, z)] -= 0.5f*dim*(p[IX(x, y + 1, z)] - p[IX(x, y - 1, z)]);
-            w[IX(x, y, z)] -= 0.5f*dim*(p[IX(x, y, z + 1)] - p[IX(x, y, z - 1)]);
-          }
-        }
-      }
-
-      set_bnd(1, u); set_bnd(2, v); set_bnd(3, w);
+      if (u) free(u);
+      if (v) free(v);
+      if (w) free(w);
+      if (u_prev) free(u_prev);
+      if (v_prev) free(v_prev);
+      if (w_prev) free(w_prev);
+      if (dens) free(dens);
+      if (dens_prev) free(dens_prev);
     }
 
-    void lin_solve(int b, float * p, float * p0, float a, float c)
+    void clear_data()
     {
-      int x, y, z, k;
+      int i, size = (x_length + 2)*(y_length + 2)*(z_length + 2);
 
-      // iterate the solver
-      for (k = 0; k<LINEARSOLVERTIMES; k++) {
-        // update for each cell
-        for (x = 1; x <= dim; x++) {
-          for (y = 1; y <= dim; y++) {
-            for (z = 1; z <= dim; z++) {
-              p[IX(x, y, z)] = (p0[IX(x, y, z)] + a*(
-                  p[IX(x - 1, y, z)] + p[IX(x + 1, y, z)] + 
-                  p[IX(x, y - 1, z)] + p[IX(x, y + 1, z)] + 
-                  p[IX(x, y, z - 1)] + p[IX(x, y, z + 1)])) / c;
-            }
-          }
-        }
-        set_bnd(b, p);
+      for (i = 0; i<size; i++) {
+        u[i] = v[i] = w[i] = u_prev[i] = v_prev[i] = w_prev[i] = dens[i] = dens_prev[i] = 0.0f;
       }
     }
 
-    void  set_bnd(int b, float * x)
+    int allocate_data()
     {
+      int size = (x_length + 2)*(y_length + 2)*(z_length + 2);
+
+      u = (float *)malloc(size * sizeof(float));
+      v = (float *)malloc(size * sizeof(float));
+      w = (float *)malloc(size * sizeof(float));
+      u_prev = (float *)malloc(size * sizeof(float));
+      v_prev = (float *)malloc(size * sizeof(float));
+      w_prev = (float *)malloc(size * sizeof(float));
+      dens = (float *)malloc(size * sizeof(float));
+      dens_prev = (float *)malloc(size * sizeof(float));
+
+      if (!u || !v || !w || !u_prev || !v_prev || !w_prev || !dens || !dens_prev) {
+        fprintf(stderr, "cannot allocate data\n");
+        return (0);
+      }
+
+      return (1);
+    }
+
+    void add_source(int M, int N, int O, float * x, float * s, float dt)
+    {
+      int i, size = (M + 2)*(N + 2)*(O + 2);
+      for (i = 0; i<size; i++) x[i] += dt*s[i];
+    }
+
+    void  set_bnd(int M, int N, int O, int b, float * x)
+    {
+
+      // bounds are cells at faces of the cube
+
       int i, j;
 
-      for (i = 1; i <= dim; i++) {
-        for (j = 1; j <= dim; j++) {
+      for (i = 1; i <= M; i++) {
+        for (j = 1; j <= N; j++) {
           x[IX(i, j, 0)] = b == 3 ? -x[IX(i, j, 1)] : x[IX(i, j, 1)];
-          x[IX(i, j, dim + 1)] = b == 3 ? -x[IX(i, j, dim)] : x[IX(i, j, dim)];
+          x[IX(i, j, O + 1)] = b == 3 ? -x[IX(i, j, O)] : x[IX(i, j, O)];
         }
       }
 
-      for (i = 1; i <= dim; i++) {
-        for (j = 1; j <= dim; j++) {
+      for (i = 1; i <= N; i++) {
+        for (j = 1; j <= O; j++) {
           x[IX(0, i, j)] = b == 1 ? -x[IX(1, i, j)] : x[IX(1, i, j)];
-          x[IX(dim + 1, i, j)] = b == 1 ? -x[IX(dim, i, j)] : x[IX(dim, i, j)];
+          x[IX(M + 1, i, j)] = b == 1 ? -x[IX(M, i, j)] : x[IX(M, i, j)];
         }
       }
 
-      for (i = 1; i <= dim; i++) {
-        for (j = 1; j <= dim; j++) {
+      for (i = 1; i <= M; i++) {
+        for (j = 1; j <= O; j++) {
           x[IX(i, 0, j)] = b == 2 ? -x[IX(i, 1, j)] : x[IX(i, 1, j)];
-          x[IX(i, dim + 1, j)] = b == 2 ? -x[IX(i, dim, j)] : x[IX(i, dim, j)];
+          x[IX(i, N + 1, j)] = b == 2 ? -x[IX(i, N, j)] : x[IX(i, N, j)];
         }
       }
 
       x[IX(0, 0, 0)] = 1.0 / 3.0*(x[IX(1, 0, 0)] + x[IX(0, 1, 0)] + x[IX(0, 0, 1)]);
-      x[IX(0, dim + 1, 0)] = 1.0 / 3.0*(x[IX(1, dim + 1, 0)] + x[IX(0, dim, 0)] + x[IX(0, dim + 1, 1)]);
+      x[IX(0, N + 1, 0)] = 1.0 / 3.0*(x[IX(1, N + 1, 0)] + x[IX(0, N, 0)] + x[IX(0, N + 1, 1)]);
 
-      x[IX(dim + 1, 0, 0)] = 1.0 / 3.0*(x[IX(dim, 0, 0)] + x[IX(dim + 1, 1, 0)] + x[IX(dim + 1, 0, 1)]);
-      x[IX(dim + 1, dim + 1, 0)] = 1.0 / 3.0*(x[IX(dim, dim + 1, 0)] + x[IX(dim + 1, dim, 0)] + x[IX(dim + 1, dim + 1, 1)]);
+      x[IX(M + 1, 0, 0)] = 1.0 / 3.0*(x[IX(M, 0, 0)] + x[IX(M + 1, 1, 0)] + x[IX(M + 1, 0, 1)]);
+      x[IX(M + 1, N + 1, 0)] = 1.0 / 3.0*(x[IX(M, N + 1, 0)] + x[IX(M + 1, N, 0)] + x[IX(M + 1, N + 1, 1)]);
 
-      x[IX(0, 0, dim + 1)] = 1.0 / 3.0*(x[IX(1, 0, dim + 1)] + x[IX(0, 1, dim + 1)] + x[IX(0, 0, dim)]);
-      x[IX(0, dim + 1, dim + 1)] = 1.0 / 3.0*(x[IX(1, dim + 1, dim + 1)] + x[IX(0, dim, dim + 1)] + x[IX(0, dim + 1, dim)]);
+      x[IX(0, 0, O + 1)] = 1.0 / 3.0*(x[IX(1, 0, O + 1)] + x[IX(0, 1, O + 1)] + x[IX(0, 0, O)]);
+      x[IX(0, N + 1, O + 1)] = 1.0 / 3.0*(x[IX(1, N + 1, O + 1)] + x[IX(0, N, O + 1)] + x[IX(0, N + 1, O)]);
 
-      x[IX(dim + 1, 0, dim + 1)] = 1.0 / 3.0*(x[IX(dim, 0, dim + 1)] + x[IX(dim + 1, 1, dim + 1)] + x[IX(dim + 1, 0, dim)]);
-      x[IX(dim + 1, dim + 1, dim + 1)] = 1.0 / 3.0*(x[IX(dim, dim + 1, dim + 1)] + x[IX(dim + 1, dim, dim + 1)] + x[IX(dim + 1, dim + 1, dim)]);
+      x[IX(M + 1, 0, O + 1)] = 1.0 / 3.0*(x[IX(M, 0, O + 1)] + x[IX(M + 1, 1, O + 1)] + x[IX(M + 1, 0, O)]);
+      x[IX(M + 1, N + 1, O + 1)] = 1.0 / 3.0*(x[IX(M, N + 1, O + 1)] + x[IX(M + 1, N, O + 1)] + x[IX(M + 1, N + 1, O)]);
     }
 
-
-    void dens_step(float dt) {
-      add_sources(densities, densities_prev, dt);
-      SWAP(densities_prev, densities);
-      diffuse(0, densities, densities_prev, diffuse_rate, dt);
-      SWAP(densities_prev, densities);
-      advect(0, densities, densities_prev, vel_x, vel_y, vel_z, dt);
-    }
-
-
-    void vel_step(float dt)
+    void lin_solve(int M, int N, int O, int b, float * x, float * x0, float a, float c)
     {
-      add_sources(vel_x, vel_x_prev, dt); 
-      add_sources(vel_y, vel_y_prev, dt); 
-      add_sources(vel_z, vel_z_prev, dt);
+      int i, j, k, l;
 
-      SWAP(vel_x_prev, vel_x); 
-      diffuse(1, vel_x, vel_x_prev, viscosity, dt);
-      SWAP(vel_y_prev, vel_y); 
-      diffuse(2, vel_y, vel_y_prev, viscosity, dt);
-      SWAP(vel_z_prev, vel_z);
-      diffuse(3, vel_z, vel_z_prev, viscosity, dt);
-
-      project(vel_x, vel_y, vel_z, vel_x_prev, vel_y_prev);
-
-      SWAP(vel_x_prev, vel_x); 
-      SWAP(vel_y_prev, vel_y); 
-      SWAP(vel_z_prev, vel_z);
-      advect(1, vel_x, vel_x_prev, vel_x_prev, vel_y_prev, vel_z_prev, dt);
-      advect(2, vel_y, vel_y_prev, vel_x_prev, vel_y_prev, vel_z_prev, dt);
-      advect(3, vel_z, vel_z_prev, vel_x_prev, vel_y_prev, vel_z_prev, dt);
-
-      project(vel_x, vel_y, vel_z, vel_x_prev, vel_y_prev);
+      // iterate the solver
+      for (l = 0; l<LINEARSOLVERTIMES; l++) {
+        // update for each cell
+        for (i = 1; i <= M; i++) {
+          for (j = 1; j <= N; j++) {
+            for (k = 1; k <= O; k++) {
+              x[IX(i, j, k)] = (x0[IX(i, j, k)] + a*(x[IX(i - 1, j, k)] + x[IX(i + 1, j, k)] + x[IX(i, j - 1, k)] + x[IX(i, j + 1, k)] + x[IX(i, j, k - 1)] + x[IX(i, j, k + 1)])) / c;
+            }
+          }
+        }
+        set_bnd(M, N, O, b, x);
+      }
     }
 
+    void diffuse(int M, int N, int O, int b, float * x, float * x0, float diff, float dt)
+    {
+      int max = MAX(MAX(M, N), MAX(N, O));
+      float a = dt*diff*max*max*max;
+      lin_solve(M, N, O, b, x, x0, a, 1 + 6 * a);
+    }
 
-    void render_debug() {
-      //glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
-      //glBegin(GL_LINES);
-      //for (int z = 1; z <= dim; z++) {
-      //  for (int y = 1; y <= dim; y++) {
-      //    for (int x = 1; x <= dim; x++) {
-      //      int idx = IX(x, y, z);
-      //      glVertex3f((float)x / (float)dim - 0.5f, (float)y / (float)dim - 0.5f, (float)z / (float)dim - 0.5f);
+    void advect(int M, int N, int O, int b, float * d, float * d0, float * u, float * v, float * w, float dt)
+    {
+      int i, j, k, i0, j0, k0, i1, j1, k1;
+      float x, y, z, s0, t0, s1, t1, u1, u0, dtx, dty, dtz;
 
-      //      glVertex3f((float)x / (float)dim - 0.5f + vel_x[idx], (float)y / (float)dim - 0.5f + vel_y[idx], (float)z / (float)dim - 0.5f + vel_z[idx]);
-      //    }
-      //  }
-      //}
-      //glEnd();
+      dtx = dty = dtz = dt*MAX(MAX(M, N), MAX(N, O));
 
-      glPointSize(10.0f);
+      for (i = 1; i <= M; i++) {
+        for (j = 1; j <= N; j++) {
+          for (k = 1; k <= O; k++) {
+            x = i - dtx*u[IX(i, j, k)]; y = j - dty*v[IX(i, j, k)]; z = k - dtz*w[IX(i, j, k)];
+            if (x<0.5f) x = 0.5f; if (x>M + 0.5f) x = M + 0.5f; i0 = (int)x; i1 = i0 + 1;
+            if (y<0.5f) y = 0.5f; if (y>N + 0.5f) y = N + 0.5f; j0 = (int)y; j1 = j0 + 1;
+            if (z<0.5f) z = 0.5f; if (z>O + 0.5f) z = O + 0.5f; k0 = (int)z; k1 = k0 + 1;
+
+            s1 = x - i0; s0 = 1 - s1; t1 = y - j0; t0 = 1 - t1; u1 = z - k0; u0 = 1 - u1;
+            d[IX(i, j, k)] = s0*(t0*u0*d0[IX(i0, j0, k0)] + t1*u0*d0[IX(i0, j1, k0)] + t0*u1*d0[IX(i0, j0, k1)] + t1*u1*d0[IX(i0, j1, k1)]) +
+              s1*(t0*u0*d0[IX(i1, j0, k0)] + t1*u0*d0[IX(i1, j1, k0)] + t0*u1*d0[IX(i1, j0, k1)] + t1*u1*d0[IX(i1, j1, k1)]);
+          }
+        }
+      }
+
+      set_bnd(M, N, O, b, d);
+    }
+
+    void project(int M, int N, int O, float * u, float * v, float * w, float * p, float * div)
+    {
+      int i, j, k;
+
+      for (i = 1; i <= M; i++) {
+        for (j = 1; j <= N; j++) {
+          for (k = 1; k <= O; k++) {
+            div[IX(i, j, k)] = -1.0 / 3.0*((u[IX(i + 1, j, k)] - u[IX(i - 1, j, k)]) / M + (v[IX(i, j + 1, k)] - v[IX(i, j - 1, k)]) / M + (w[IX(i, j, k + 1)] - w[IX(i, j, k - 1)]) / M);
+            p[IX(i, j, k)] = 0;
+          }
+        }
+      }
+
+      set_bnd(M, N, O, 0, div); set_bnd(M, N, O, 0, p);
+
+      lin_solve(M, N, O, 0, p, div, 1, 6);
+
+      for (i = 1; i <= M; i++) {
+        for (j = 1; j <= N; j++) {
+          for (k = 1; k <= O; k++) {
+            u[IX(i, j, k)] -= 0.5f*M*(p[IX(i + 1, j, k)] - p[IX(i - 1, j, k)]);
+            v[IX(i, j, k)] -= 0.5f*M*(p[IX(i, j + 1, k)] - p[IX(i, j - 1, k)]);
+            w[IX(i, j, k)] -= 0.5f*M*(p[IX(i, j, k + 1)] - p[IX(i, j, k - 1)]);
+          }
+        }
+      }
+
+      set_bnd(M, N, O, 1, u); set_bnd(M, N, O, 2, v); set_bnd(M, N, O, 3, w);
+    }
+
+    void dens_step(int M, int N, int O, float * x, float * x0, float * u, float * v, float * w, float diff, float dt)
+    {
+      add_source(M, N, O, x, x0, dt);
+      SWAP(x0, x); diffuse(M, N, O, 0, x, x0, diff, dt);
+      SWAP(x0, x); advect(M, N, O, 0, x, x0, u, v, w, dt);
+    }
+
+    void vel_step(int M, int N, int O, float * u, float * v, float * w, float * u0, float * v0, float * w0, float visc, float dt)
+    {
+      add_source(M, N, O, u, u0, dt); add_source(M, N, O, v, v0, dt); add_source(M, N, O, w, w0, dt);
+      SWAP(u0, u); diffuse(M, N, O, 1, u, u0, visc, dt);
+      SWAP(v0, v); diffuse(M, N, O, 2, v, v0, visc, dt);
+      SWAP(w0, w); diffuse(M, N, O, 3, w, w0, visc, dt);
+      project(M, N, O, u, v, w, u0, v0);
+      SWAP(u0, u); SWAP(v0, v); SWAP(w0, w);
+      advect(M, N, O, 1, u, u0, u0, v0, w0, dt); advect(M, N, O, 2, v, v0, u0, v0, w0, dt); advect(M, N, O, 3, w, w0, u0, v0, w0, dt);
+      project(M, N, O, u, v, w, u0, v0);
+    }
+
+    void render_debug() 
+    {
+      glBegin(GL_LINES);
+      for (int z = 1; z <= z_length; z++) {
+        for (int y = 1; y <= y_length; y++) {
+          for (int x = 1; x <= x_length; x++) {
+            int idx = IX(x, y, z);
+            glColor4f(0.0f, 1.0f, 1.0f / (float)z_length * (float)z , 1.0f);
+            glVertex3f((float)x / (float)x_length * 2 - 1.0f, (float)y / (float)y_length * 2 - 1.0f, (float)z / (float)z_length * 2 - 1.0f);
+
+            glVertex3f((float)x / (float)x_length * 2 - 1.0f + u[idx], (float)y / (float)y_length * 2 - 1.0f + v[idx], (float)z / (float)z_length * 2 - 1.0f + w[idx]);
+          }
+        }
+      }
+      glEnd();
+/*
+      glPointSize(3.5f);
       glBegin(GL_POINTS);
-      for (int z = 1; z <= dim; z++) {
-        for (int y = 1; y <= dim; y++) {
-          for (int x = 1; x <= dim; x++) {
-            float tone = densities[IX(x, y, z)];
-            glColor4f(1.0f, 1.0f, 1.0f, tone);
+      for (int z = 1; z <= z_length; z++) {
+        for (int y = 1; y <= y_length; y++) {
+          for (int x = 1; x <= x_length; x++) {
+            float tone = dens[IX(x, y, z)];
+            glColor4f(7.0f, 7.0f, 7.0f, tone);
             if (tone > 2) {
-              glColor4f(tone - 2.0f, 0.0f, 0.0f, tone);
+              glColor4f(tone - 2.0f, tone - 2.0f, 0.0f, tone);
             }
             if (tone > 5) {
-              glColor4f(0.0f, tone - 5.0f, 0.0f, tone);
+              glColor4f(tone - 5.0f, 0.0f, 0.0f, tone);
             }
             if (tone > 10) {
               glColor4f(0.0f, 0.0f, tone - 10.0f, tone);
             }
             
-            glVertex3f((float)x / (float)dim - 0.5f, (float)y / (float)dim - 0.5f, (float)z / (float)dim - 0.5f);
+            glVertex3f((float)x / (float)x_length * 2 - 1.0f, (float)y / (float)y_length * 2 - 1.0f, (float)z / (float)z_length * 2 - 1.0f);
           }
         }
       }
-      glEnd();
+      glEnd();*/
     }
 
 
   public:
     fluid_simulator() {}
-    ~fluid_simulator() {
-      delete densities;
-      delete densities_prev;
-    }
+    ~fluid_simulator() {}
+
+    void init(int w, int h, int d) 
+    {
+      x_length = w;
+      y_length = h;
+      z_length = d;
+      size = (w + 2) * (h + 2) * (d + 2);
 
 
-    void init(int dimentions) {
-      dim = dimentions;
-      diffuse_rate = 0.2f;
-      viscosity = 0.0f;
+      allocate_data();
+      clear_data();
 
-      size = (dim + 2) * (dim + 2) * (dim + 2);
-      densities = new float[size];
-      densities_prev = new float[size];
-      vel_x = new float[size];
-      vel_y = new float[size];
-      vel_z = new float[size];
+      diffuse_rate = (float)size * 10000.0f;
+      viscosity = (float)size * 0.000001f;
 
-      vel_x_prev = new float[size];
-      vel_y_prev = new float[size];
-      vel_z_prev = new float[size];
+      printf("size: %d \n", size);
 
-      for (int i = 0; i < size; i++) {
-        densities[i] = 0.0f;
-        densities_prev[i] = 0.0001f;
+      // Debuging ideas
+      //for (int i = 0; i < size; i++) {
+      //  densities[i] = 0.0f;
+        //dens_prev[i] = 0.1f;
 
-        vel_x[i] = 0.0f;
-        vel_y[i] = 0.0f;
-        vel_z[i] = 0.0f;
-        vel_x_prev[i] = 0.0f;
-        vel_y_prev[i] = 0.0f;
-        vel_z_prev[i] = 0.0f;
-      }
+      //  vel_x[i] = 0.0f;
+      //  vel_y[i] = 0.0f;
+      //  vel_z[i] = 0.0f;
+      //  vel_x_prev[i] = 0.0f;
+      //  vel_y_prev[i] = 0.0f;
+      //  vel_z_prev[i] = 0.0f;
+      //}
 
-      densities_prev[IX(20, 20, 20)] = 300.0f;
-      vel_y[IX(22, 22, 20)] = 70.0f;
+      
 
       //for (int k = 18; k < 23; k++) {
       //  for (int i = 1; i <= dim; i++) {
@@ -272,27 +292,35 @@ namespace octet {
       //}
     }
 
-    int loop = 0;
-    void update(float dt) {
+    void update(float dt) 
+    {
+      
+      dt = 10.0f;
 
-      printf("p: %f p_old: %f\n", densities[IX(10, 9, 10)], densities_prev[IX(10, 9, 10)]);
+      viscosity = 0.0f;
+      diffuse_rate = 0.0f;
 
-      dt = dt * 2.0f;
+      dens_prev[IX(64, 16, 1)] = 5.0f;
+      dens_prev[IX(64, 15, 1)] = 5.0f;
+      dens_prev[IX(64, 17, 1)] = 5.0f;
+      dens_prev[IX(63, 16, 1)] = 5.0f;
+      dens_prev[IX(65, 16, 1)] = 5.0f;
+      v_prev[IX(64, 8, 1)] = 0.1f;
 
-      vel_step(dt);
-      dens_step(dt);
+      //printf("p: %f p_old: %f\n", dens[IX(10, 9, 10)], dens_prev[IX(10, 9, 10)]);
 
 
+      vel_step(x_length, y_length, z_length, u, v, w, u_prev, v_prev, w_prev, viscosity, dt);
+      dens_step(x_length, y_length, z_length, dens, dens_prev, u, v, w, diffuse_rate, dt);
+
+
+      //printf("p: %f | vel: %f , %f , %f\n", dens[IX(10, 9, 1)], u[IX(10, 9, 1)], v[IX(10, 9, 1)], w[IX(10, 9, 1)]);
       render_debug();
+
+      for (int i = 0; i<size; i++) {
+        u_prev[i] = v_prev[i] = w_prev[i] = dens_prev[i] = 0.0f;
+      }
     }
-
-    void add_sources(float *p, float *s, float dt) {
-      for (int i = 0; i < size; i++) p[i] += dt * s[i];
-    }
-
-
-
-
   };
 
 }
