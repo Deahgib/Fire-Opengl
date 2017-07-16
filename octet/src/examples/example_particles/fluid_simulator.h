@@ -1,7 +1,7 @@
 #pragma once
 
 #define IX(x, y, z) ((x) + (dim+2)*(y) + (dim+2)*(dim+2)*(z))
-#define SWAP(x, x0) {float *tmp = x0; x0 = x; x = tmp;}
+#define SWAP(x0, x) {float *tmp = x0; x0 = x; x = tmp;}
 
 namespace octet {
   /// Scene containing a particle system
@@ -9,7 +9,7 @@ namespace octet {
     int size;
     int dim;
 
-    const int LINEARSOLVERTIMES = 20;
+    const int LINEARSOLVERTIMES = 10;
 
     float *densities; // Densities
     float *densities_prev; // Densities
@@ -152,9 +152,9 @@ namespace octet {
 
     void dens_step(float dt) {
       add_sources(densities, densities_prev, dt);
-      SWAP(densities, densities_prev);
+      SWAP(densities_prev, densities);
       diffuse(0, densities, densities_prev, diffuse_rate, dt);
-      SWAP(densities, densities_prev);
+      SWAP(densities_prev, densities);
       advect(0, densities, densities_prev, vel_x, vel_y, vel_z, dt);
     }
 
@@ -173,6 +173,7 @@ namespace octet {
       diffuse(3, vel_z, vel_z_prev, viscosity, dt);
 
       project(vel_x, vel_y, vel_z, vel_x_prev, vel_y_prev);
+
       SWAP(vel_x_prev, vel_x); 
       SWAP(vel_y_prev, vel_y); 
       SWAP(vel_z_prev, vel_z);
@@ -185,19 +186,19 @@ namespace octet {
 
 
     void render_debug() {
-      glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
-      glBegin(GL_LINES);
-      for (int z = 1; z <= dim; z++) {
-        for (int y = 1; y <= dim; y++) {
-          for (int x = 1; x <= dim; x++) {
-            int idx = IX(x, y, z);
-            glVertex3f((float)x / (float)dim - 0.5f, (float)y / (float)dim - 0.5f, (float)z / (float)dim - 0.5f);
+      //glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
+      //glBegin(GL_LINES);
+      //for (int z = 1; z <= dim; z++) {
+      //  for (int y = 1; y <= dim; y++) {
+      //    for (int x = 1; x <= dim; x++) {
+      //      int idx = IX(x, y, z);
+      //      glVertex3f((float)x / (float)dim - 0.5f, (float)y / (float)dim - 0.5f, (float)z / (float)dim - 0.5f);
 
-            glVertex3f((float)x / (float)dim - 0.5f + vel_x[idx], (float)y / (float)dim - 0.5f + vel_y[idx], (float)z / (float)dim - 0.5f + vel_z[idx]);
-          }
-        }
-      }
-      glEnd();
+      //      glVertex3f((float)x / (float)dim - 0.5f + vel_x[idx], (float)y / (float)dim - 0.5f + vel_y[idx], (float)z / (float)dim - 0.5f + vel_z[idx]);
+      //    }
+      //  }
+      //}
+      //glEnd();
 
       glPointSize(10.0f);
       glBegin(GL_POINTS);
@@ -234,7 +235,7 @@ namespace octet {
 
     void init(int dimentions) {
       dim = dimentions;
-      diffuse_rate = 0.0f;
+      diffuse_rate = 0.2f;
       viscosity = 0.0f;
 
       size = (dim + 2) * (dim + 2) * (dim + 2);
@@ -250,7 +251,7 @@ namespace octet {
 
       for (int i = 0; i < size; i++) {
         densities[i] = 0.0f;
-        densities_prev[i] = 0.0f;
+        densities_prev[i] = 0.0001f;
 
         vel_x[i] = 0.0f;
         vel_y[i] = 0.0f;
@@ -260,8 +261,8 @@ namespace octet {
         vel_z_prev[i] = 0.0f;
       }
 
-      densities[IX(10, 9, 10)] = 1.0f;
-      vel_y[IX(10, 7, 10)] = 0.1f;
+      densities_prev[IX(20, 20, 20)] = 300.0f;
+      vel_y[IX(22, 22, 20)] = 70.0f;
 
       //for (int k = 18; k < 23; k++) {
       //  for (int i = 1; i <= dim; i++) {
@@ -273,14 +274,9 @@ namespace octet {
 
     int loop = 0;
     void update(float dt) {
-      //if (loop < 250){
-      //  densities_prev[IX(5, 10, 10)] = 0.1f;
-      //  vel_y_prev[IX(15, 10, 10)] = 0.1f;
-      //  loop++;
-      //  if (loop >= 250) {
-      //    printf("ENDED GAS PRODUCTION\n");
-      //  }
-      //}
+
+      printf("p: %f p_old: %f\n", densities[IX(10, 9, 10)], densities_prev[IX(10, 9, 10)]);
+
       dt = dt * 2.0f;
 
       vel_step(dt);
@@ -291,9 +287,7 @@ namespace octet {
     }
 
     void add_sources(float *p, float *s, float dt) {
-      for (int i = 0; i < size; i++) {
-        p[i] += dt * s[i];
-      }
+      for (int i = 0; i < size; i++) p[i] += dt * s[i];
     }
 
 

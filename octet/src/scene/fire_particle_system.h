@@ -51,7 +51,7 @@ namespace octet {
     protected:
       void init(const aabb &size, int bbcap, int tpcap, int pacap) {
 
-        fluid_sim.init(40);
+        fluid_sim.init(32);
 
         add_attribute(attribute_pos, 3, GL_FLOAT, 0);
         add_attribute(attribute_normal, 3, GL_FLOAT, 12);

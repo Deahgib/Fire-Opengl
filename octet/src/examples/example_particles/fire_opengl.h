@@ -102,10 +102,10 @@ namespace octet {
       app_scene->update(1.0f/30);
 
 
-      //glBlendEquation(GL_FUNC_ADD);
-      //glDepthMask(true);
-      //glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
-      //glBlendFunc(GL_ONE, GL_ONE);
+      glBlendEquation(GL_FUNC_ADD);
+      glDepthMask(true);
+      glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
+      glBlendFunc(GL_ONE, GL_ONE);
 
       // draw the scene
       //app_scene->render((float)vx / vy);
