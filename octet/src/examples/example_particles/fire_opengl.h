@@ -42,7 +42,7 @@ namespace octet {
       app_scene->create_default_camera_and_lights();
 
       ci = app_scene->get_camera_instance(0);
-      ci->get_node()->translate(vec3(0,0,30));
+      ci->get_node()->translate(vec3(0,0,3));
       ci->set_far_plane(1000.0f);
       camera_movement = new camera_controller(this);
       camera_movement->add_camera(ci);
@@ -52,13 +52,13 @@ namespace octet {
 
       fire_instance* fire = new fire_instance(&r);
       fire->init(
-        vec3(5, -7, 0),
-        new image("assets/fire/seamless_fire_texture_3.gif"),
-        new image("assets/fire/particle_g_atlas.gif"),
-        new image("assets/fire/seamless_fire_texture_3.gif"),
-        new image("assets/fire/seamless_fire_texture_3.gif"),
-        new image("assets/fire/seamless_fire_texture_3.gif"),
-        true);
+        vec3(0, 0, 0),
+        new image("assets/fire/seamless_fire_texture_test.gif"),
+        new image("assets/fire/fire_particle_test.gif"),
+        new image("assets/fire/seamless_fire_texture_test.gif"),
+        new image("assets/fire/seamless_fire_texture_test.gif"),
+        new image("assets/fire/seamless_fire_texture_test.gif"),
+        false);
       fires.push_back(fire);
       scene_node *node = new scene_node();
       app_scene->add_child(node);
@@ -102,13 +102,13 @@ namespace octet {
       app_scene->update(1.0f/30);
 
 
-      glBlendEquation(GL_FUNC_ADD);
-      glDepthMask(true);
-      glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
-      glBlendFunc(GL_ONE, GL_ONE);
+      //glBlendEquation(GL_FUNC_ADD);
+      //glDepthMask(true);
+      //glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
+      //glBlendFunc(GL_ONE, GL_ONE);
 
       // draw the scene
-      //app_scene->render((float)vx / vy);
+      app_scene->render((float)vx / vy);
     }
   };
 }

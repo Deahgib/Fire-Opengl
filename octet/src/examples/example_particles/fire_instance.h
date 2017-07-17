@@ -91,7 +91,7 @@ namespace octet {
       atom_t atom_overlay_noise = app_utils::get_atom("overlay_noise");
       overlay_noise = fire_material->add_sampler(slot_overlay_noise, atom_overlay_noise, overlay_noise_img, new sampler());
 
-      system = new fire_particle_system(aabb(vec3(0, 0, 0), vec3(1, 1, 1)), 256, 256, 256, using_atlas);
+      system = new fire_particle_system(aabb(vec3(0, 15, 0), vec3(4, 16, 4)), 256, 0, 256, using_atlas);
     }
   
     void update(camera_instance* ci, float time) {
@@ -135,13 +135,13 @@ namespace octet {
       mesh_particle_system::particle_animator pa;
       memset(&pa, 0, sizeof(pa));
       pa.link = pidx;
-      pa.acceleration = vec3p(0, 20.0f, 0);
+      pa.acceleration = vec3p(0, 0, 0);
       pa.vel = vec3p(r->get(-2.0f, 2.0f), 1.0f, r->get(-2.0f, 2.0f));
       //pa.spin = pow(2,31);
-      pa.lifetime = 75;
+      pa.lifetime = 255;
       system->add_particle_animator(pa);
 
-      fire_material->set_uniform(time_index, &time, sizeof(time));
+      //fire_material->set_uniform(time_index, &time, sizeof(time));
 
       system->set_cameraToWorld(ci->get_node()->calcModelToWorld());
       system->animate(1.0f / 30);

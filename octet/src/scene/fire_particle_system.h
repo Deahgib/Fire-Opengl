@@ -51,7 +51,7 @@ namespace octet {
     protected:
       void init(const aabb &size, int bbcap, int tpcap, int pacap) {
 
-        fluid_sim.init(128, 128, 1);
+        fluid_sim.init(16, 32, 16);
 
         add_attribute(attribute_pos, 3, GL_FLOAT, 0);
         add_attribute(attribute_normal, 3, GL_FLOAT, 12);
@@ -129,15 +129,13 @@ namespace octet {
         if (age >= 2 * lifeStep) {
           ss = (1.0f - smoothstep(2.0f * lifeStep, (float)lifetime_, age)) * 0.5f;
         }*/
-        return vec4(0.0f, 0.0f, 1.0f, alpha);
+        return vec4(1.0f, 0.0f, 0.0f, alpha);
       }
 
       /// Update the vertices for newtonian physics.
       void animate(float time_step) {
-        fluid_sim.update(time_step);
+        fluid_sim.update(time_step); 
 
-        vec3 wind = vec3(0.1f, 0.0f, 0.0f);
-        vec3 wind_turb = vec3(rand.get(-1.0f, 1.0f), rand.get(-0.3f, 0.3f), rand.get(-1.0f, 1.0f));
         for (unsigned i = 0; i != particle_animators.size(); ++i) {
           particle_animator &g = particle_animators[i];
           if (g.link >= 0) {
@@ -149,16 +147,16 @@ namespace octet {
               free(particle_animators, free_particle_animator, i);
             }
             else {
-              p.pos = (vec3)p.pos + (vec3)g.vel * time_step;
-              g.vel = (vec3)g.vel + (vec3)g.acceleration * time_step;
-              //g.vel = (vec3)g.vel + wind_turb*0.3f + wind;
-              p.angle += (uint32_t)(g.spin * time_step);
-              p.size = get_size_for_age(g.age, g.lifetime) * 5.0f;
+              //g.vel = (vec3)g.vel + (vec3)g.acceleration * time_step;
+              vec3 n_vel;
+              fluid_sim.get_velocity(get_aabb(), p.pos, n_vel);
+              p.pos = (vec3)p.pos + n_vel;
+              //p.angle += (uint32_t)(g.spin * time_step);
+              p.size = get_size_for_age(g.age, g.lifetime) * 0.1f;
               p.color = get_color_for_age(g.age, g.lifetime);
-              //p.size = vec2p(3.0f, 3.0f);
               g.age++;
 
-              if (using_atlas_) {
+              /*if (using_atlas_) {
                 float change_uvs = rand.get(0.0f, 1.0f);
                 if (change_uvs > 0.99f){
                   float tex_toggle = rand.get(0.0f, 1.0f);
@@ -179,7 +177,7 @@ namespace octet {
                     p.uv_top_right = vec2p(concat_atlas_uvs[3][2], concat_atlas_uvs[3][3]);
                   }
                 }
-              }
+              }*/
             }
           }
         }

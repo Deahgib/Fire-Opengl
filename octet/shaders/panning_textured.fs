@@ -32,9 +32,9 @@ void main() {
   vec4 diffuse = texture2D(particle_diffuse, vec2(uv_.x, uv_.y));
   vec4 mask = texture2D(particle_mask, vec2(uv_.x, uv_.y));
 
-  vec4 overlay = texture2D(overlay_diffuse, vec2(overlay_uv_.x, overlay_uv_.y - time));
-  vec4 overlay_mask = texture2D(overlay_mask, vec2(overlay_uv_.x, overlay_uv_.y));
-  vec4 overlay_noise = texture2D(overlay_noise, vec2(overlay_uv_.x, overlay_uv_.y));
+  //vec4 overlay = texture2D(overlay_diffuse, vec2(overlay_uv_.x, overlay_uv_.y - time));
+  //vec4 overlay_mask = texture2D(overlay_mask, vec2(overlay_uv_.x, overlay_uv_.y));
+  //vec4 overlay_noise = texture2D(overlay_noise, vec2(overlay_uv_.x, overlay_uv_.y));
   //diffuse = vec4(max(diffuse.xyz, (overlay.xyz*0.7)), max(max(diffuse.xyz));
   
   
@@ -51,15 +51,16 @@ void main() {
 //    diffuse_light += diffuse_factor * light_color;
 //  }
 
-  if(overlay_mask.x > 0.8){
-	overlay = vec4(overlay.xyz, overlay_mask.x * overlay_noise.x);
-  }else{
-	overlay = vec4(overlay.xyz, overlay_mask.x * (overlay_noise.x * 0.03));
-  }
+//  if(overlay_mask.x > 0.8){
+//	overlay = vec4(overlay.xyz, overlay_mask.x * overlay_noise.x);
+//  }else{
+//	overlay = vec4(overlay.xyz, overlay_mask.x * (overlay_noise.x * 0.03));
+//  }
 
 
-  diffuse = mix(diffuse, overlay, 0.4);
-  gl_FragColor = vec4(diffuse.xyz, mask.x * color_.a);
+  //diffuse = mix(diffuse, overlay, 0.4);
+  gl_FragColor = vec4(color_.xzy, mask.x * color_.a);
+
   //gl_FragColor = vec4(panner.x, panner.y, panner.z, 1.0);
 }
 
