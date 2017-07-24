@@ -118,7 +118,7 @@ namespace octet { namespace scene {
     }
 
     // return to pool
-    template <class Type> void free(dynarray<Type> &array, int &free, int element) {
+    template <class Type> void free_particle(dynarray<Type> &array, int &free, int element) {
       array[free].link = free;
       free = element;
     }
@@ -139,9 +139,9 @@ namespace octet { namespace scene {
           billboard_particle &p = billboard_particles[g.link];
           if (g.age >= g.lifetime) {
             p.enabled = false;
-            free(billboard_particles, free_billboard_particle, g.link);
+            free_particle(billboard_particles, free_billboard_particle, g.link);
             g.link = -1;
-            free(particle_animators, free_particle_animator, i);
+            free_particle(particle_animators, free_particle_animator, i);
           } else {
             p.pos = (vec3)p.pos + (vec3)g.vel * time_step;
             g.vel = (vec3)g.vel + (vec3)g.acceleration * time_step;

@@ -9,58 +9,10 @@ namespace octet {
     /// Scene containing a particle system
     class fluid_simulator {
     private:
-      int size;
       int x_length, y_length, z_length;
-
-      float * u, *v, *w, *u_prev, *v_prev, *w_prev;
-      float * dens, *dens_prev;
-
-      float diffuse_rate;
-      float viscosity;
 
       const int LINEARSOLVERTIMES = 10;
 
-      void free_data()
-      {
-        if (u) free(u);
-        if (v) free(v);
-        if (w) free(w);
-        if (u_prev) free(u_prev);
-        if (v_prev) free(v_prev);
-        if (w_prev) free(w_prev);
-        if (dens) free(dens);
-        if (dens_prev) free(dens_prev);
-      }
-
-      void clear_data()
-      {
-        int i, size = (x_length + 2)*(y_length + 2)*(z_length + 2);
-
-        for (i = 0; i < size; i++) {
-          u[i] = v[i] = w[i] = u_prev[i] = v_prev[i] = w_prev[i] = dens[i] = dens_prev[i] = 0.0f;
-        }
-      }
-
-      int allocate_data()
-      {
-        int size = (x_length + 2)*(y_length + 2)*(z_length + 2);
-
-        u = (float *)malloc(size * sizeof(float));
-        v = (float *)malloc(size * sizeof(float));
-        w = (float *)malloc(size * sizeof(float));
-        u_prev = (float *)malloc(size * sizeof(float));
-        v_prev = (float *)malloc(size * sizeof(float));
-        w_prev = (float *)malloc(size * sizeof(float));
-        dens = (float *)malloc(size * sizeof(float));
-        dens_prev = (float *)malloc(size * sizeof(float));
-
-        if (!u || !v || !w || !u_prev || !v_prev || !w_prev || !dens || !dens_prev) {
-          fprintf(stderr, "cannot allocate data\n");
-          return (0);
-        }
-
-        return (1);
-      }
 
       void add_source(int M, int N, int O, float * x, float * s, float dt)
       {
@@ -189,6 +141,17 @@ namespace octet {
         set_bnd(M, N, O, 1, u); set_bnd(M, N, O, 2, v); set_bnd(M, N, O, 3, w);
       }
 
+
+    public:
+      fluid_simulator() {}
+      ~fluid_simulator() {}
+
+      void init(int w, int h, int d) {
+        x_length = w;
+        y_length = h;
+        z_length = d;
+      }
+
       void dens_step(int M, int N, int O, float * x, float * x0, float * u, float * v, float * w, float diff, float dt)
       {
         add_source(M, N, O, x, x0, dt);
@@ -206,108 +169,6 @@ namespace octet {
         SWAP(u0, u); SWAP(v0, v); SWAP(w0, w);
         advect(M, N, O, 1, u, u0, u0, v0, w0, dt); advect(M, N, O, 2, v, v0, u0, v0, w0, dt); advect(M, N, O, 3, w, w0, u0, v0, w0, dt);
         project(M, N, O, u, v, w, u0, v0);
-      }
-
-      void render_debug()
-      {
-        glBegin(GL_LINES);
-        for (int z = 1; z <= z_length; z++) {
-          for (int y = 1; y <= y_length; y++) {
-            for (int x = 1; x <= x_length; x++) {
-              int idx = IX(x, y, z);
-              glColor4f(0.0f, 1.0f, 1.0f / (float)z_length * (float)z, 1.0f);
-              glVertex3f((float)x / (float)x_length * 2 - 1.0f, (float)y / (float)y_length * 2 - 1.0f, (float)z / (float)z_length * 2 - 1.0f);
-
-              glVertex3f((float)x / (float)x_length * 2 - 1.0f + u[idx], (float)y / (float)y_length * 2 - 1.0f + v[idx], (float)z / (float)z_length * 2 - 1.0f + w[idx]);
-            }
-          }
-        }
-        glEnd();
-
-        glPointSize(5.5f);
-        glBegin(GL_POINTS);
-        for (int z = 1; z <= z_length; z++) {
-          for (int y = 1; y <= y_length; y++) {
-            for (int x = 1; x <= x_length; x++) {
-              float tone = dens[IX(x, y, z)];
-              glColor4f(7.0f, 7.0f, 7.0f, tone);
-              if (tone > 2) {
-                glColor4f(tone - 2.0f, tone - 2.0f, 0.0f, tone);
-              }
-              if (tone > 5) {
-                glColor4f(tone - 5.0f, 0.0f, 0.0f, tone);
-              }
-              if (tone > 10) {
-                glColor4f(0.0f, 0.0f, tone - 10.0f, tone);
-              }
-
-              glVertex3f((float)x / (float)x_length * 2 - 1.0f, (float)y / (float)y_length * 2 - 1.0f, (float)z / (float)z_length * 2 - 1.0f);
-            }
-          }
-        }
-        glEnd();
-      }
-
-
-    public:
-      fluid_simulator() {}
-      ~fluid_simulator() {}
-
-      void init(int w, int h, int d)
-      {
-        x_length = w;
-        y_length = h;
-        z_length = d;
-        size = (w + 2) * (h + 2) * (d + 2);
-
-        float max = MAX(MAX((float)x_length, (float)y_length), (float)z_length);
-
-        allocate_data();
-        clear_data();
-
-        // 6 here from dt reversing: ( float a = dt*diff*max*max*max; )  for testing
-        diffuse_rate = 0.01f / (max * max * max * 6.0f);
-        //diffuse_rate = 0.0f;
-        viscosity = 0.001f / (max * max * max * 6.0f);
-
-        //dens_prev[IX(8, 2, 8)] = size;
-
-        printf("size: %d \n", size);
-      }
-
-      void update(float dt)
-      {
-        //dt = 6.0f;
-        dens_prev[IX(8, 2, 8)] = 0.1f;
-        //dens_prev[IX(8, 1, 8)] = 0.1f;
-        //dens_prev[IX(8, 3, 8)] = 0.1f;
-        //dens_prev[IX(7, 2, 8)] = 0.1f;
-        //dens_prev[IX(9, 2, 8)] = 0.1f;
-        v_prev[IX(8, 1, 8)] = 15.1f;
-
-        vel_step(x_length, y_length, z_length, u, v, w, u_prev, v_prev, w_prev, viscosity, dt);
-        dens_step(x_length, y_length, z_length, dens, dens_prev, u, v, w, diffuse_rate, dt);
-
-        //printf("p: %f p_old: %f\n", dens[IX(10, 9, 10)], dens_prev[IX(10, 9, 10)]);
-        //printf("p: %f | vel: %f , %f , %f\n", dens[IX(10, 9, 1)], u[IX(10, 9, 1)], v[IX(10, 9, 1)], w[IX(10, 9, 1)]);
-        //render_debug();
-
-        for (int i = 0; i < size; i++) {
-          u_prev[i] = v_prev[i] = w_prev[i] = dens_prev[i] = 0.0f;
-        }
-      }
-
-      void get_velocity(const aabb bounds, vec3 pos, vec3 &vel) {
-        if (bounds.intersects(pos)) {
-          vec3 min = bounds.get_min();
-          vec3 max = bounds.get_max();
-          int x_idx = round((pos[0] - min[0]) / (max[0] - min[0]) * (float)x_length);
-          int y_idx = round((pos[1] - min[1]) / (max[1] - min[1]) * (float)y_length);
-          int z_idx = round((pos[2] - min[2]) / (max[2] - min[2]) * (float)z_length);
-          vel[0] = u[IX(x_idx, y_idx, z_idx)];
-          vel[1] = v[IX(x_idx, y_idx, z_idx)];
-          vel[2] = w[IX(x_idx, y_idx, z_idx)];
-        }
       }
 
     };

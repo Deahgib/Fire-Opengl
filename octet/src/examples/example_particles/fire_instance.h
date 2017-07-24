@@ -91,7 +91,7 @@ namespace octet {
       atom_t atom_overlay_noise = app_utils::get_atom("overlay_noise");
       overlay_noise = fire_material->add_sampler(slot_overlay_noise, atom_overlay_noise, overlay_noise_img, new sampler());
 
-      system = new fire_particle_system(aabb(vec3(0, 15, 0), vec3(4, 16, 4)), 256, 0, 256, using_atlas);
+      system = new fire_particle_system(aabb(pos, vec3(1, 2, 1)), 256, 0, 256, using_atlas);
     }
   
     void update(camera_instance* ci, float time) {
@@ -101,7 +101,9 @@ namespace octet {
       fire_particle_system::fire_billboard_particle p;
       memset(&p, 0, sizeof(p));
       //p.pos = vec3p(worldCoord[0] + r->get(-1.0f, 1.0f), worldCoord[1] + r->get(-1.0f, 1.0f), worldCoord[2] + r->get(-1.0f, 1.0f));
-      p.pos = vec3p(worldCoord[0], worldCoord[1], worldCoord[2]);
+      p.pos = vec3p(worldCoord[0] + r->get(-0.01f, 0.01f), worldCoord[1]-1.8f, worldCoord[2]);
+      //p.uv_bottom_left = vec2p(1.0f, 0.0f);
+      //p.uv_top_right = vec2p(0.0f, 1.0f);
       if(using_atlas_){
         if (tex_toggle < 0.25f) {
           p.uv_bottom_left = vec2p(0.0f, 1.0f);
@@ -136,9 +138,9 @@ namespace octet {
       memset(&pa, 0, sizeof(pa));
       pa.link = pidx;
       pa.acceleration = vec3p(0, 0, 0);
-      pa.vel = vec3p(r->get(-2.0f, 2.0f), 1.0f, r->get(-2.0f, 2.0f));
+      pa.vel = vec3p(0.0f, 0.0f, 0.0f);
       //pa.spin = pow(2,31);
-      pa.lifetime = 255;
+      pa.lifetime = 30;
       system->add_particle_animator(pa);
 
       //fire_material->set_uniform(time_index, &time, sizeof(time));
@@ -149,6 +151,9 @@ namespace octet {
 
     }
 
+    void update_input(app_common *in) {
+      if (in->is_key_down('X')) { system->addWind(); }
+    }
 
     ref<material> get_material() {
       return fire_material;

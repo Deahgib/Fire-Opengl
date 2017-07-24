@@ -54,11 +54,11 @@ namespace octet {
       fire->init(
         vec3(0, 0, 0),
         new image("assets/fire/seamless_fire_texture_test.gif"),
-        new image("assets/fire/fire_particle_test.gif"),
+        new image("assets/fire/fire_particle_5.gif"),
         new image("assets/fire/seamless_fire_texture_test.gif"),
         new image("assets/fire/seamless_fire_texture_test.gif"),
         new image("assets/fire/seamless_fire_texture_test.gif"),
-        false);
+        true);
       fires.push_back(fire);
       scene_node *node = new scene_node();
       app_scene->add_child(node);
@@ -95,6 +95,7 @@ namespace octet {
       glDisable(GL_DEPTH_TEST);
 
       for (auto fire : fires) {
+        fire->update_input(this);
         fire->update(ci, (float)get_frame_number() / 30.0f);
       }
 
@@ -108,7 +109,7 @@ namespace octet {
       //glBlendFunc(GL_ONE, GL_ONE);
 
       // draw the scene
-      app_scene->render((float)vx / vy);
+      //app_scene->render((float)vx / vy);
     }
   };
 }

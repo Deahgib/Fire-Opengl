@@ -17,11 +17,101 @@ namespace octet {
         vec4 color;
       };
     private:
+      // Fluid sim
       fluid_simulator fluid_sim;
+      int x_length, y_length, z_length;
+      int fs_size;
+      float * u, *v, *w, *u_prev, *v_prev, *w_prev;
+      float * dens, *dens_prev;
+      float diffuse_rate;
+      float viscosity;
 
+      // particle system
       vec4 concat_atlas_uvs[4];
       bool using_atlas_;
+      random rand;
+      dynarray<fire_billboard_particle> fire_billboard_particles;
 
+      void free_data()
+      {
+        if (u) free(u);
+        if (v) free(v);
+        if (w) free(w);
+        if (u_prev) free(u_prev);
+        if (v_prev) free(v_prev);
+        if (w_prev) free(w_prev);
+        if (dens) free(dens);
+        if (dens_prev) free(dens_prev);
+      }
+
+      void clear_data()
+      {
+        int i, size = (x_length + 2)*(y_length + 2)*(z_length + 2);
+
+        for (i = 0; i < size; i++) {
+          u[i] = v[i] = w[i] = u_prev[i] = v_prev[i] = w_prev[i] = dens[i] = dens_prev[i] = 0.0f;
+        }
+      }
+
+      int allocate_data()
+      {
+        int size = (x_length + 2)*(y_length + 2)*(z_length + 2);
+
+        u = (float *)malloc(size * sizeof(float));
+        v = (float *)malloc(size * sizeof(float));
+        w = (float *)malloc(size * sizeof(float));
+        u_prev = (float *)malloc(size * sizeof(float));
+        v_prev = (float *)malloc(size * sizeof(float));
+        w_prev = (float *)malloc(size * sizeof(float));
+        dens = (float *)malloc(size * sizeof(float));
+        dens_prev = (float *)malloc(size * sizeof(float));
+
+        if (!u || !v || !w || !u_prev || !v_prev || !w_prev || !dens || !dens_prev) {
+          fprintf(stderr, "cannot allocate data\n");
+          return (0);
+        }
+
+        return (1);
+      }
+      void render_debug()
+      {
+        glBegin(GL_LINES);
+        for (int z = 1; z <= z_length; z++) {
+          for (int y = 1; y <= y_length; y++) {
+            for (int x = 1; x <= x_length; x++) {
+              int idx = IX(x, y, z);
+              glColor4f(0.0f, 1.0f, 1.0f / (float)z_length * (float)z, 1.0f);
+              glVertex3f((float)x / (float)x_length * 2 - 1.0f, (float)y / (float)y_length * 2 - 1.0f, (float)z / (float)z_length * 2 - 1.0f);
+
+              glVertex3f((float)x / (float)x_length * 2 - 1.0f + u[idx], (float)y / (float)y_length * 2 - 1.0f + v[idx], (float)z / (float)z_length * 2 - 1.0f + w[idx]);
+            }
+          }
+        }
+        glEnd();
+
+        glPointSize(5.5f);
+        glBegin(GL_POINTS);
+        for (int z = 1; z <= z_length; z++) {
+          for (int y = 1; y <= y_length; y++) {
+            for (int x = 1; x <= x_length; x++) {
+              float tone = dens[IX(x, y, z)];
+              glColor4f(7.0f, 7.0f, 7.0f, tone);
+              if (tone > 2) {
+                glColor4f(tone - 2.0f, tone - 2.0f, 0.0f, tone);
+              }
+              if (tone > 5) {
+                glColor4f(tone - 5.0f, 0.0f, 0.0f, tone);
+              }
+              if (tone > 10) {
+                glColor4f(0.0f, 0.0f, tone - 10.0f, tone);
+              }
+
+              glVertex3f((float)x / (float)x_length * 2 - 1.0f, (float)y / (float)y_length * 2 - 1.0f, (float)z / (float)z_length * 2 - 1.0f);
+            }
+          }
+        }
+        glEnd();
+      }
       vec3 applyTransform(mat4t trans, vec3 pos_in) {
         vec4 out = trans * vec4(pos_in, 0);
         return vec3(out[0], out[1], out[2]);
@@ -42,16 +132,40 @@ namespace octet {
         return x;
       }
 
+      void get_velocity(const aabb bounds, vec3 pos, vec3 &vel, float &den) {
+        if (bounds.intersects(pos)) {
+          vec3 min = bounds.get_min();
+          vec3 max = bounds.get_max();
+          int x_idx = round((pos[0] - min[0]) / (max[0] - min[0]) * (float)x_length);
+          int y_idx = round((pos[1] - min[1]) / (max[1] - min[1]) * (float)y_length);
+          int z_idx = round((pos[2] - min[2]) / (max[2] - min[2]) * (float)z_length);
+          vel[0] = u[IX(x_idx, y_idx, z_idx)];
+          vel[1] = v[IX(x_idx, y_idx, z_idx)];
+          vel[2] = w[IX(x_idx, y_idx, z_idx)];
+          den = dens[IX(x_idx, y_idx, z_idx)];
+          printf("New vel: %f %f %f\n", vel.x(), vel.y(), vel.z());
+        }
+        else
+        {
+          printf("Out of bounds: %f %f %f\n", pos.x(), pos.y(), pos.z());
+        }
+      }
 
-      random rand;
-
-      dynarray<fire_billboard_particle> fire_billboard_particles;
 
 
     protected:
       void init(const aabb &size, int bbcap, int tpcap, int pacap) {
-
-        fluid_sim.init(16, 32, 16);
+        x_length = 16;
+        y_length = 32;
+        z_length = 16;
+        fluid_sim.init(x_length, y_length, z_length);
+        fs_size = (x_length + 2) * (y_length + 2) * (z_length + 2);
+        printf("size: %d \n", fs_size);
+        allocate_data();
+        clear_data();
+        // 6 here from dt reversing: ( float a = dt*diff*max*max*max; )  for testing
+        diffuse_rate = 0.0f;
+        viscosity = 0.0f;
 
         add_attribute(attribute_pos, 3, GL_FLOAT, 0);
         add_attribute(attribute_normal, 3, GL_FLOAT, 12);
@@ -86,12 +200,14 @@ namespace octet {
         using_atlas_ = using_atlas;
       }
 
+
+
       vec2 get_size_for_age(uint32_t age_, uint32_t lifetime_) {
         float lifeStep = (float)lifetime_ / 3.0f;
         float age = (float)age_;
         float ss;
         if (age < lifeStep) {
-          ss = smoothstep(0, lifeStep, age);
+          ss = 1.0f;
         }
         if (age >= lifeStep && age < 2 * lifeStep) {
           ss = (1.0f - smoothstep(lifeStep, 2.0f * lifeStep, age)) * 0.5f + 0.5f;
@@ -115,7 +231,7 @@ namespace octet {
         float age = (float)age_;
         float alpha;
         if (age < lifeStep) {
-          alpha = smoothstep(0.0f, lifeStep, age);
+          alpha = smoothstep(lifeStep, lifeStep, age);
         }
         else if (age > (float)lifetime_ - lifeStep) {
           alpha = 1.0f - smoothstep((float)lifetime_ - lifeStep, (float)lifetime_, age);
@@ -129,12 +245,27 @@ namespace octet {
         if (age >= 2 * lifeStep) {
           ss = (1.0f - smoothstep(2.0f * lifeStep, (float)lifetime_, age)) * 0.5f;
         }*/
-        return vec4(1.0f, 0.0f, 0.0f, alpha);
+        return vec4(1.0f, 1.0f, 1.0f, alpha);
+      }
+
+      void addWind() {
+        u_prev[IX(x_length / 4, y_length / 2, z_length / 2)] = 2000.0f;
+        //dens_prev[IX(x_length / 2, 2, z_length / 2)] = 200.0f;
       }
 
       /// Update the vertices for newtonian physics.
       void animate(float time_step) {
-        fluid_sim.update(time_step); 
+        float t = rand.get(0.0f, 1.0f);
+        if (t < 0.01f) {
+          //u_prev[IX(x_length / 2, y_length / 2, 3 * z_length / 4)] = -2000.0f;
+        }
+        u_prev[IX(x_length / 4, y_length / 2, z_length / 2)] = 1.0f;
+        v_prev[IX(x_length / 2, 2, z_length / 2)] = 1.0f;
+        dens_prev[IX(x_length / 2, 2, z_length / 2)] = 55.2f;
+        fluid_sim.vel_step(x_length, y_length, z_length, u, v, w, u_prev, v_prev, w_prev, viscosity, time_step);
+        fluid_sim.dens_step(x_length, y_length, z_length, dens, dens_prev, u, v, w, diffuse_rate, time_step);
+        vec3 n_vel;
+        float density = 0.0f;
 
         for (unsigned i = 0; i != particle_animators.size(); ++i) {
           particle_animator &g = particle_animators[i];
@@ -142,44 +273,25 @@ namespace octet {
             fire_billboard_particle &p = fire_billboard_particles[g.link];
             if (g.age >= g.lifetime) {
               p.enabled = false;
-              free(fire_billboard_particles, free_billboard_particle, g.link);
+              free_particle(fire_billboard_particles, free_billboard_particle, g.link);
               g.link = -1;
-              free(particle_animators, free_particle_animator, i);
+              free_particle(particle_animators, free_particle_animator, i);
             }
             else {
               //g.vel = (vec3)g.vel + (vec3)g.acceleration * time_step;
-              vec3 n_vel;
-              fluid_sim.get_velocity(get_aabb(), p.pos, n_vel);
+              get_velocity(get_aabb(), p.pos, n_vel, density);
               p.pos = (vec3)p.pos + n_vel;
               //p.angle += (uint32_t)(g.spin * time_step);
-              p.size = get_size_for_age(g.age, g.lifetime) * 0.1f;
-              p.color = get_color_for_age(g.age, g.lifetime);
+              p.size = get_size_for_age(g.age, g.lifetime) * 0.2f;
+              p.color = vec4(density, density - 2.0f, density - 1.0f, (density < 0.8f)? density : 0.8f);
+                //get_color_for_age(g.age, g.lifetime);
               g.age++;
-
-              /*if (using_atlas_) {
-                float change_uvs = rand.get(0.0f, 1.0f);
-                if (change_uvs > 0.99f){
-                  float tex_toggle = rand.get(0.0f, 1.0f);
-                  if (tex_toggle < 0.25f) {
-                    p.uv_bottom_left = vec2p(concat_atlas_uvs[0][0], concat_atlas_uvs[0][1]);
-                    p.uv_top_right = vec2p(concat_atlas_uvs[0][2], concat_atlas_uvs[0][3]);
-                  }
-                  else if (tex_toggle < 0.5f) {
-                    p.uv_bottom_left = vec2p(concat_atlas_uvs[1][0], concat_atlas_uvs[1][1]);
-                    p.uv_top_right = vec2p(concat_atlas_uvs[1][2], concat_atlas_uvs[1][3]);
-                  }
-                  else if (tex_toggle < 0.75f) {
-                    p.uv_bottom_left = vec2p(concat_atlas_uvs[2][0], concat_atlas_uvs[2][1]);
-                    p.uv_top_right = vec2p(concat_atlas_uvs[2][2], concat_atlas_uvs[2][3]);
-                  }
-                  else {
-                    p.uv_bottom_left = vec2p(concat_atlas_uvs[3][0], concat_atlas_uvs[3][1]);
-                    p.uv_top_right = vec2p(concat_atlas_uvs[3][2], concat_atlas_uvs[3][3]);
-                  }
-                }
-              }*/
             }
           }
+        }
+
+        for (int i = 0; i < fs_size; i++) {
+          u_prev[i] = v_prev[i] = w_prev[i] = dens_prev[i] = 0.0f;
         }
       }
 
@@ -225,6 +337,9 @@ namespace octet {
         set_num_vertices(num_vertices);
         set_num_indices(num_indices);
         //dump(log("mesh\n"));
+
+        render_debug();
+
       }
     
 
