@@ -42,7 +42,7 @@ namespace octet {
       app_scene->create_default_camera_and_lights();
 
       ci = app_scene->get_camera_instance(0);
-      ci->get_node()->translate(vec3(0,0,3));
+      ci->get_node()->translate(vec3(0,0,1));
       ci->set_far_plane(1000.0f);
       camera_movement = new camera_controller(this);
       camera_movement->add_camera(ci);
