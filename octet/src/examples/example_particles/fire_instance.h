@@ -153,7 +153,17 @@ namespace octet {
 
     void update_input(app_common *in) {
       if (in->is_key_down('X')) { system->addWind(); }
+
+
+	  if (in->is_key_going_down('Z')) { system->activate_source(); }
+
+
+	  if (in->is_key_going_down('C')) { system->clear(); }
     }
+
+	void render_debug() {
+		system->render_debug();
+	}
 
     ref<material> get_material() {
       return fire_material;

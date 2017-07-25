@@ -8,6 +8,7 @@
 #include "fire_instance.h"
 
 #include "camera_controller.h"
+#include "time.h"
 
 namespace octet {
   /// Scene containing a particle system
@@ -54,11 +55,11 @@ namespace octet {
       fire->init(
         vec3(0, 0, 0),
         new image("assets/fire/seamless_fire_texture_test.gif"),
-        new image("assets/fire/fire_particle_5.gif"),
+        new image("assets/fire/fire_particle_test.gif"),
         new image("assets/fire/seamless_fire_texture_test.gif"),
         new image("assets/fire/seamless_fire_texture_test.gif"),
         new image("assets/fire/seamless_fire_texture_test.gif"),
-        true);
+        false);
       fires.push_back(fire);
       scene_node *node = new scene_node();
       app_scene->add_child(node);
@@ -79,9 +80,13 @@ namespace octet {
       //app_scene->add_mesh_instance(new mesh_instance(node2, fire2->get_particle_system(), fire2->get_material()));
     }
 
+
+	bool render_e = false;
     /// this is called to draw the world
     void draw_world(int x, int y, int w, int h) {
-      int vx = 0, vy = 0;
+      
+		
+	  int vx = 0, vy = 0;
       get_viewport_size(vx, vy);
       app_scene->begin_render(vx, vy, vec4(0.0f, 0.0f, 0.0f, 1.0f));
 
@@ -89,6 +94,9 @@ namespace octet {
       if (is_key_down(key::key_esc)) {
         exit(1);
       }
+	  if (is_key_going_down('R')) { render_e = !render_e; }
+
+
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       glEnable(GL_BLEND | GL_ALPHA_TEST);
@@ -99,17 +107,24 @@ namespace octet {
         fire->update(ci, (float)get_frame_number() / 30.0f);
       }
 
-      // update matrices. assume 30 fps.
-      app_scene->update(1.0f/30);
-
-
       //glBlendEquation(GL_FUNC_ADD);
       //glDepthMask(true);
       //glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
       //glBlendFunc(GL_ONE, GL_ONE);
 
       // draw the scene
-      //app_scene->render((float)vx / vy);
+
+	  if (render_e) {      
+		  // update matrices. assume 30 fps.
+		  app_scene->update(1.0f / 30);
+		  app_scene->render((float)vx / vy);
+	  }
+	  else {
+		  for (auto fire : fires) {
+			  fire->render_debug();
+		  }
+	  }
+	  
     }
   };
 }

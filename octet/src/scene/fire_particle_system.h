@@ -73,45 +73,7 @@ namespace octet {
 
         return (1);
       }
-      void render_debug()
-      {
-        glBegin(GL_LINES);
-        for (int z = 1; z <= z_length; z++) {
-          for (int y = 1; y <= y_length; y++) {
-            for (int x = 1; x <= x_length; x++) {
-              int idx = IX(x, y, z);
-              glColor4f(0.0f, 1.0f, 1.0f / (float)z_length * (float)z, 1.0f);
-              glVertex3f((float)x / (float)x_length * 2 - 1.0f, (float)y / (float)y_length * 2 - 1.0f, (float)z / (float)z_length * 2 - 1.0f);
-
-              glVertex3f((float)x / (float)x_length * 2 - 1.0f + u[idx], (float)y / (float)y_length * 2 - 1.0f + v[idx], (float)z / (float)z_length * 2 - 1.0f + w[idx]);
-            }
-          }
-        }
-        glEnd();
-
-        glPointSize(5.5f);
-        glBegin(GL_POINTS);
-        for (int z = 1; z <= z_length; z++) {
-          for (int y = 1; y <= y_length; y++) {
-            for (int x = 1; x <= x_length; x++) {
-              float tone = dens[IX(x, y, z)];
-              glColor4f(7.0f, 7.0f, 7.0f, tone);
-              if (tone > 2) {
-                glColor4f(tone - 2.0f, tone - 2.0f, 0.0f, tone);
-              }
-              if (tone > 5) {
-                glColor4f(tone - 5.0f, 0.0f, 0.0f, tone);
-              }
-              if (tone > 10) {
-                glColor4f(0.0f, 0.0f, tone - 10.0f, tone);
-              }
-
-              glVertex3f((float)x / (float)x_length * 2 - 1.0f, (float)y / (float)y_length * 2 - 1.0f, (float)z / (float)z_length * 2 - 1.0f);
-            }
-          }
-        }
-        glEnd();
-      }
+      
       vec3 applyTransform(mat4t trans, vec3 pos_in) {
         vec4 out = trans * vec4(pos_in, 0);
         return vec3(out[0], out[1], out[2]);
@@ -143,7 +105,7 @@ namespace octet {
           vel[1] = v[IX(x_idx, y_idx, z_idx)];
           vel[2] = w[IX(x_idx, y_idx, z_idx)];
           den = dens[IX(x_idx, y_idx, z_idx)];
-          printf("New vel: %f %f %f\n", vel.x(), vel.y(), vel.z());
+          //printf("New vel: %f %f %f\n", vel.x(), vel.y(), vel.z());
         }
         else
         {
@@ -201,6 +163,46 @@ namespace octet {
       }
 
 
+	  void render_debug()
+	  {
+		  glBegin(GL_LINES);
+		  for (int z = 1; z <= z_length; z++) {
+			  for (int y = 1; y <= y_length; y++) {
+				  for (int x = 1; x <= x_length; x++) {
+					  int idx = IX(x, y, z);
+					  glColor4f(0.0f, 1.0f, 1.0f / (float)z_length * (float)z, 1.0f);
+					  glVertex3f((float)x / (float)x_length * 2 - 1.0f, (float)y / (float)y_length * 2 - 1.0f, (float)z / (float)z_length * 2 - 1.0f);
+
+					  glVertex3f((float)x / (float)x_length * 2 - 1.0f + u[idx], (float)y / (float)y_length * 2 - 1.0f + v[idx], (float)z / (float)z_length * 2 - 1.0f + w[idx]);
+				  }
+			  }
+		  }
+		  glEnd();
+
+		  glPointSize(10.0f);
+		  glBegin(GL_POINTS);
+		  for (int z = 1; z <= z_length; z++) {
+			  for (int y = 1; y <= y_length; y++) {
+				  for (int x = 1; x <= x_length; x++) {
+					  float tone = dens[IX(x, y, z)];
+					  glColor4f(7.0f, 7.0f, 7.0f, tone);
+					  if (tone > 2) {
+						  glColor4f(tone - 2.0f, tone - 2.0f, 0.0f, tone);
+					  }
+					  if (tone > 5) {
+						  glColor4f(tone - 5.0f, 0.0f, 0.0f, tone);
+					  }
+					  if (tone > 10) {
+						  glColor4f(0.0f, 0.0f, tone - 10.0f, tone);
+					  }
+
+					  glVertex3f((float)x / (float)x_length * 2 - 1.0f, (float)y / (float)y_length * 2 - 1.0f, (float)z / (float)z_length * 2 - 1.0f);
+				  }
+			  }
+		  }
+		  glEnd();
+	  }
+
 
       vec2 get_size_for_age(uint32_t age_, uint32_t lifetime_) {
         float lifeStep = (float)lifetime_ / 3.0f;
@@ -248,9 +250,19 @@ namespace octet {
         return vec4(1.0f, 1.0f, 1.0f, alpha);
       }
 
+	  void clear() {
+		  clear_data();
+	  }
+
+	  bool source_on = false;
+	  void activate_source() {
+		  source_on = !source_on;
+	  }
+
       void addWind() {
-        u_prev[IX(x_length / 4, y_length / 2, z_length / 2)] = 2000.0f;
-        //dens_prev[IX(x_length / 2, 2, z_length / 2)] = 200.0f;
+        u_prev[IX(x_length / 4, y_length / 4, z_length / 2)] = 200.0f;
+		u_prev[IX(3 * x_length / 4, 3 * y_length / 4, z_length / 2)] = -200.0f;
+        dens_prev[IX(x_length / 2, y_length / 2, z_length / 2)] = 200.0f;
       }
 
       /// Update the vertices for newtonian physics.
@@ -259,9 +271,11 @@ namespace octet {
         if (t < 0.01f) {
           //u_prev[IX(x_length / 2, y_length / 2, 3 * z_length / 4)] = -2000.0f;
         }
-        u_prev[IX(x_length / 4, y_length / 2, z_length / 2)] = 1.0f;
-        v_prev[IX(x_length / 2, 2, z_length / 2)] = 1.0f;
-        dens_prev[IX(x_length / 2, 2, z_length / 2)] = 55.2f;
+		if (source_on) {
+			u_prev[IX(x_length / 4, y_length / 2, z_length / 2)] = 0.1f;
+			v_prev[IX(x_length / 2, 2, z_length / 2)] = 1.0f;
+			dens_prev[IX(x_length / 2, 2, z_length / 2)] = 55.2f;
+		}
         fluid_sim.vel_step(x_length, y_length, z_length, u, v, w, u_prev, v_prev, w_prev, viscosity, time_step);
         fluid_sim.dens_step(x_length, y_length, z_length, dens, dens_prev, u, v, w, diffuse_rate, time_step);
         vec3 n_vel;
@@ -338,8 +352,7 @@ namespace octet {
         set_num_indices(num_indices);
         //dump(log("mesh\n"));
 
-        render_debug();
-
+        //render_debug();
       }
     
 
