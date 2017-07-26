@@ -8,7 +8,8 @@
 #include "fire_instance.h"
 
 #include "camera_controller.h"
-#include "time.h"
+
+#include <time.h>
 
 namespace octet {
   /// Scene containing a particle system
@@ -24,6 +25,8 @@ namespace octet {
     camera_controller* camera_movement;
 
     random r;
+
+    clock_t last_time;
 
   public:
     /// this is called when we construct the class before everything is initialised.
@@ -43,7 +46,7 @@ namespace octet {
       app_scene->create_default_camera_and_lights();
 
       ci = app_scene->get_camera_instance(0);
-      ci->get_node()->translate(vec3(0,0,1));
+      ci->get_node()->translate(vec3(0,0,3));
       ci->set_far_plane(1000.0f);
       camera_movement = new camera_controller(this);
       camera_movement->add_camera(ci);
@@ -55,16 +58,19 @@ namespace octet {
       fire->init(
         vec3(0, 0, 0),
         new image("assets/fire/seamless_fire_texture_test.gif"),
-        new image("assets/fire/fire_particle_test.gif"),
+        new image("assets/fire/fire_particle_6.gif"),
         new image("assets/fire/seamless_fire_texture_test.gif"),
         new image("assets/fire/seamless_fire_texture_test.gif"),
         new image("assets/fire/seamless_fire_texture_test.gif"),
-        false);
+        true);
       fires.push_back(fire);
-      scene_node *node = new scene_node();
-      app_scene->add_child(node);
-      app_scene->add_mesh_instance(new mesh_instance(node, fire->get_particle_system(), fire->get_material()));
-
+      mesh_instance *mi = fire->get_mesh_instance();
+      app_scene->add_child(mi->get_node());
+      app_scene->add_mesh_instance(mi);
+      mesh_instance *mi_debug = fire->get_debug_mesh_instance();
+      mi->get_node()->add_child(mi_debug->get_node());
+      app_scene->add_mesh_instance(mi_debug);
+      app_scene->add_mesh_instance(fire->get_debug_mesh_vel_instance());
       /*fire_instance* fire2 = new fire_instance(&r);
       fire2->init(
         vec3(-5, -7, 0), 
@@ -78,15 +84,17 @@ namespace octet {
       //scene_node *node2 = new scene_node();
       //app_scene->add_child(node2);
       //app_scene->add_mesh_instance(new mesh_instance(node2, fire2->get_particle_system(), fire2->get_material()));
+
+      last_time = clock();
     }
 
-
-	bool render_e = false;
     /// this is called to draw the world
     void draw_world(int x, int y, int w, int h) {
-      
-		
-	  int vx = 0, vy = 0;
+      clock_t time_diff = clock() - last_time;
+      last_time = clock();
+      float dt = (float)time_diff / CLOCKS_PER_SEC;
+
+      int vx = 0, vy = 0;
       get_viewport_size(vx, vy);
       app_scene->begin_render(vx, vy, vec4(0.0f, 0.0f, 0.0f, 1.0f));
 
@@ -94,9 +102,6 @@ namespace octet {
       if (is_key_down(key::key_esc)) {
         exit(1);
       }
-	  if (is_key_going_down('R')) { render_e = !render_e; }
-
-
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       glEnable(GL_BLEND | GL_ALPHA_TEST);
@@ -104,8 +109,12 @@ namespace octet {
 
       for (auto fire : fires) {
         fire->update_input(this);
-        fire->update(ci, (float)get_frame_number() / 30.0f);
+        fire->update(ci, dt);
       }
+
+      // update matrices. assume 30 fps.
+      app_scene->update(dt);
+
 
       //glBlendEquation(GL_FUNC_ADD);
       //glDepthMask(true);
@@ -113,18 +122,7 @@ namespace octet {
       //glBlendFunc(GL_ONE, GL_ONE);
 
       // draw the scene
-
-	  if (render_e) {      
-		  // update matrices. assume 30 fps.
-		  app_scene->update(1.0f / 30);
-		  app_scene->render((float)vx / vy);
-	  }
-	  else {
-		  for (auto fire : fires) {
-			  fire->render_debug();
-		  }
-	  }
-	  
+      app_scene->render((float)vx / vy);
     }
   };
 }

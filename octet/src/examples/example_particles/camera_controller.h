@@ -43,22 +43,22 @@ namespace octet {
       if (input->is_key_down('D')) { ci->get_camera_instance()->get_node()->translate(vec3(increment, 0, 0)); }
 
       // Translate camera - Y-axis    up down
-      if (input->is_key_down('Q')) { ci->get_camera_instance()->get_node()->translate(vec3(0, increment, 0)); }
-      if (input->is_key_down('E')) { ci->get_camera_instance()->get_node()->translate(vec3(0, -increment, 0)); }
+      if (input->is_key_down('R')) { ci->get_camera_instance()->get_node()->translate(vec3(0, increment, 0)); }
+      if (input->is_key_down('F')) { ci->get_camera_instance()->get_node()->translate(vec3(0, -increment, 0)); }
 
       // Translate camera - Z-axis    forward backward
       if (input->is_key_down('W')) { ci->get_camera_instance()->get_node()->translate(vec3(0, 0, -increment)); }
       if (input->is_key_down('S')) { ci->get_camera_instance()->get_node()->translate(vec3(0, 0, increment)); }
 
       // Rotate camera - X-axis
+      if (input->is_key_down('Q')) { ci->get_camera_instance()->get_node()->rotate(increment, vec3p(0, 1, 0)); }
+      if (input->is_key_down('E')) { ci->get_camera_instance()->get_node()->rotate(-increment, vec3p(0, 1, 0)); }
       //if (abs(y) > 2) { ci->get_camera_instance()->get_node()->rotate(-y, vec3p(1, 0, 0)); }
 
       // Rotate camera - Y axis
       //if (abs(x) > 2) { ci->get_camera_instance()->get_node()->rotate(-x, vec3p(0,1,0)); }
 
       // Rotate camera - Y axis
-      if (input->is_key_down('R')) { ci->get_camera_instance()->get_node()->rotate(increment, vec3p(0, 0, 1)); }
-      if (input->is_key_down('F')) { ci->get_camera_instance()->get_node()->rotate(-increment, vec3p(0, 0, 1)); }
 
       // Set wireframe on or off
       /*static bool wireframe = false;

@@ -26,11 +26,52 @@ namespace octet {
       float diffuse_rate;
       float viscosity;
 
+      ref<mesh> fluid_sim_debug;
+      ref<mesh> fluid_sim_vel_debug;
       // particle system
       vec4 concat_atlas_uvs[4];
       bool using_atlas_;
       random rand;
       dynarray<fire_billboard_particle> fire_billboard_particles;
+
+      void init_fluid_sim() {
+        x_length = 16;
+        y_length = 32;
+        z_length = 16;
+        fluid_sim.init(x_length, y_length, z_length);
+        fs_size = (x_length + 2) * (y_length + 2) * (z_length + 2);
+        printf("size: %d \n", fs_size);
+        allocate_data();
+        clear_data();
+        // 6 here from dt reversing: ( float a = dt*diff*max*max*max; )  for testing
+        diffuse_rate = 0.0f;
+        viscosity = 0.0f;
+
+        fluid_sim_debug = new mesh();
+        fluid_sim_debug->add_attribute(attribute_pos, 3, GL_FLOAT, 0);
+        fluid_sim_debug->add_attribute(attribute_normal, 3, GL_FLOAT, 12);
+        fluid_sim_debug->add_attribute(attribute_uv, 2, GL_FLOAT, 24);
+        fluid_sim_debug->add_attribute(attribute_color, 4, GL_FLOAT, 32);
+        fluid_sim_debug->set_params(48, 0, 0, GL_POINTS, GL_UNSIGNED_INT);
+
+        uint32_t size = (x_length + 2) * (y_length + 2) * (z_length + 2);
+        unsigned vsize = (size + 8) * sizeof(fire_vertex);
+        unsigned isize = (size + 8) * sizeof(uint32_t);
+        fluid_sim_debug->allocate(vsize, isize);
+        glPointSize(5.0f);
+
+        fluid_sim_vel_debug = new mesh();
+        fluid_sim_vel_debug->add_attribute(attribute_pos, 3, GL_FLOAT, 0);
+        fluid_sim_vel_debug->add_attribute(attribute_normal, 3, GL_FLOAT, 12);
+        fluid_sim_vel_debug->add_attribute(attribute_uv, 2, GL_FLOAT, 24);
+        fluid_sim_vel_debug->add_attribute(attribute_color, 4, GL_FLOAT, 32);
+        fluid_sim_vel_debug->set_params(48, 0, 0, GL_LINES, GL_UNSIGNED_INT);
+
+        vsize = size * 2 * sizeof(fire_vertex);
+        isize = size * 2 * sizeof(uint32_t);
+        fluid_sim_vel_debug->allocate(vsize, isize);
+        glPointSize(5.0f);
+      }
 
       void free_data()
       {
@@ -73,7 +114,7 @@ namespace octet {
 
         return (1);
       }
-      
+
       vec3 applyTransform(mat4t trans, vec3 pos_in) {
         vec4 out = trans * vec4(pos_in, 0);
         return vec3(out[0], out[1], out[2]);
@@ -117,17 +158,7 @@ namespace octet {
 
     protected:
       void init(const aabb &size, int bbcap, int tpcap, int pacap) {
-        x_length = 16;
-        y_length = 32;
-        z_length = 16;
-        fluid_sim.init(x_length, y_length, z_length);
-        fs_size = (x_length + 2) * (y_length + 2) * (z_length + 2);
-        printf("size: %d \n", fs_size);
-        allocate_data();
-        clear_data();
-        // 6 here from dt reversing: ( float a = dt*diff*max*max*max; )  for testing
-        diffuse_rate = 0.0f;
-        viscosity = 0.0f;
+        init_fluid_sim();
 
         add_attribute(attribute_pos, 3, GL_FLOAT, 0);
         add_attribute(attribute_normal, 3, GL_FLOAT, 12);
@@ -161,48 +192,6 @@ namespace octet {
         concat_atlas_uvs[3] = vec4(0.5f, 0.5f, 1.0f, 0.0f);
         using_atlas_ = using_atlas;
       }
-
-
-	  void render_debug()
-	  {
-		  glBegin(GL_LINES);
-		  for (int z = 1; z <= z_length; z++) {
-			  for (int y = 1; y <= y_length; y++) {
-				  for (int x = 1; x <= x_length; x++) {
-					  int idx = IX(x, y, z);
-					  glColor4f(0.0f, 1.0f, 1.0f / (float)z_length * (float)z, 1.0f);
-					  glVertex3f((float)x / (float)x_length * 2 - 1.0f, (float)y / (float)y_length * 2 - 1.0f, (float)z / (float)z_length * 2 - 1.0f);
-
-					  glVertex3f((float)x / (float)x_length * 2 - 1.0f + u[idx], (float)y / (float)y_length * 2 - 1.0f + v[idx], (float)z / (float)z_length * 2 - 1.0f + w[idx]);
-				  }
-			  }
-		  }
-		  glEnd();
-
-		  glPointSize(10.0f);
-		  glBegin(GL_POINTS);
-		  for (int z = 1; z <= z_length; z++) {
-			  for (int y = 1; y <= y_length; y++) {
-				  for (int x = 1; x <= x_length; x++) {
-					  float tone = dens[IX(x, y, z)];
-					  glColor4f(7.0f, 7.0f, 7.0f, tone);
-					  if (tone > 2) {
-						  glColor4f(tone - 2.0f, tone - 2.0f, 0.0f, tone);
-					  }
-					  if (tone > 5) {
-						  glColor4f(tone - 5.0f, 0.0f, 0.0f, tone);
-					  }
-					  if (tone > 10) {
-						  glColor4f(0.0f, 0.0f, tone - 10.0f, tone);
-					  }
-
-					  glVertex3f((float)x / (float)x_length * 2 - 1.0f, (float)y / (float)y_length * 2 - 1.0f, (float)z / (float)z_length * 2 - 1.0f);
-				  }
-			  }
-		  }
-		  glEnd();
-	  }
-
 
       vec2 get_size_for_age(uint32_t age_, uint32_t lifetime_) {
         float lifeStep = (float)lifetime_ / 3.0f;
@@ -250,32 +239,24 @@ namespace octet {
         return vec4(1.0f, 1.0f, 1.0f, alpha);
       }
 
-	  void clear() {
-		  clear_data();
-	  }
-
-	  bool source_on = false;
-	  void activate_source() {
-		  source_on = !source_on;
-	  }
+      void clear_fluid_sim() {
+        clear_data();
+      }
 
       void addWind() {
-        u_prev[IX(x_length / 4, y_length / 4, z_length / 2)] = 200.0f;
-		u_prev[IX(3 * x_length / 4, 3 * y_length / 4, z_length / 2)] = -200.0f;
-        dens_prev[IX(x_length / 2, y_length / 2, z_length / 2)] = 200.0f;
+        v_prev[IX(x_length / 2, y_length / 8, z_length / 2)] = 100.0f;
+        dens_prev[IX(x_length / 2, y_length / 8, z_length / 2)] = 200.0f;
       }
 
       /// Update the vertices for newtonian physics.
       void animate(float time_step) {
-        float t = rand.get(0.0f, 1.0f);
-        if (t < 0.01f) {
-          //u_prev[IX(x_length / 2, y_length / 2, 3 * z_length / 4)] = -2000.0f;
-        }
-		if (source_on) {
-			u_prev[IX(x_length / 4, y_length / 2, z_length / 2)] = 0.1f;
-			v_prev[IX(x_length / 2, 2, z_length / 2)] = 1.0f;
-			dens_prev[IX(x_length / 2, 2, z_length / 2)] = 55.2f;
-		}
+        time_step *= 10.0f;
+        //float t = rand.get(0.0f, 1.0f);
+        //if (t < 0.01f) {
+        //  //u_prev[IX(x_length / 2, y_length / 2, 3 * z_length / 4)] = -2000.0f;
+        //}
+        v_prev[IX(x_length / 2, 2, z_length / 2)] = 1.0f;
+        dens_prev[IX(x_length / 2, 2, z_length / 2)] = 20.0f;
         fluid_sim.vel_step(x_length, y_length, z_length, u, v, w, u_prev, v_prev, w_prev, viscosity, time_step);
         fluid_sim.dens_step(x_length, y_length, z_length, dens, dens_prev, u, v, w, diffuse_rate, time_step);
         vec3 n_vel;
@@ -292,9 +273,14 @@ namespace octet {
               free_particle(particle_animators, free_particle_animator, i);
             }
             else {
-              //g.vel = (vec3)g.vel + (vec3)g.acceleration * time_step;
-              get_velocity(get_aabb(), p.pos, n_vel, density);
-              p.pos = (vec3)p.pos + n_vel;
+              if (get_aabb().intersects(p.pos)) {
+                get_velocity(get_aabb(), p.pos, n_vel, density);
+                p.pos = (vec3)p.pos + n_vel;
+                g.vel = n_vel;
+              }
+              else {
+                p.pos = (vec3)p.pos + g.vel;
+              }
               //p.angle += (uint32_t)(g.spin * time_step);
               p.size = get_size_for_age(g.age, g.lifetime) * 0.2f;
               p.color = vec4(density, density - 2.0f, density - 1.0f, (density < 0.8f)? density : 0.8f);
@@ -306,6 +292,98 @@ namespace octet {
 
         for (int i = 0; i < fs_size; i++) {
           u_prev[i] = v_prev[i] = w_prev[i] = dens_prev[i] = 0.0f;
+        }
+      }
+
+      void update_fluid_sim() {
+        // DENSITIES
+        {
+          gl_resource::wolock vlock(fluid_sim_debug->get_vertices());
+          fire_vertex *vtx = (fire_vertex*)vlock.u8();
+          gl_resource::wolock ilock(fluid_sim_debug->get_indices());
+          uint32_t *idx = ilock.u32();
+          unsigned num_vertices = 0;
+          unsigned num_indices = 0;
+
+          vec3 origin_pos = get_aabb().get_min();
+          vec3 dimentions = get_aabb().get_half_extent() * 2.0f;
+          vec3 n = cameraToWorld.z().xyz();
+          float x_step = dimentions[0] / (x_length + 2);
+          float y_step = dimentions[1] / (y_length + 2);
+          float z_step = dimentions[2] / (z_length + 2);
+          for (int i = 0; i <= (x_length + 1); i++) {
+            for (int j = 0; j <= (y_length + 1); j++) {
+              for (int k = 0; k <= (z_length + 1); k++) {
+                vtx->pos = vec3(origin_pos.x() + x_step * 0.5f + i * x_step, origin_pos.y() + y_step * 0.5f + j * y_step, origin_pos.z() + z_step * 0.5f + k * z_step);
+                vtx->normal = n;
+                vtx->uv = vec2p(0, 0);
+                float density = dens[IX(i, j, k)];
+                vtx->color = vec4(density, density - 2.0f, density - 1.0f, (density < 0.8f) ? density : 0.8f);
+                vtx++;
+                idx[0] = num_vertices;
+                idx++;
+                num_vertices++;
+                num_indices++;
+              }
+            }
+          }
+          // AABB CORNERS IN GREEN
+          vtx->pos = vec3p(origin_pos);                                                                                    /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3(origin_pos[0] + dimentions[0], origin_pos[1], origin_pos[2]);                                   /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3(origin_pos[0], origin_pos[1], origin_pos[2] + dimentions[2]);                                   /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3(origin_pos[0] + dimentions[0], origin_pos[1], origin_pos[2] + dimentions[2]);                  /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3(origin_pos[0], origin_pos[1] + dimentions[1], origin_pos[2]);                                   /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3(origin_pos[0] + dimentions[0], origin_pos[1] + dimentions[1], origin_pos[2]);                  /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3(origin_pos[0], origin_pos[1] + dimentions[1], origin_pos[2] + dimentions[2]);                  /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3(origin_pos[0] + dimentions[0], origin_pos[1] + dimentions[1], origin_pos[2] + dimentions[2]); /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+
+          idx[0] = num_vertices;     idx[1] = num_vertices + 1; idx[2] = num_vertices + 2; idx[3] = num_vertices + 3;
+          idx[4] = num_vertices + 4; idx[5] = num_vertices + 5; idx[6] = num_vertices + 6; idx[7] = num_vertices + 7;
+          idx += 8;
+          num_vertices += 8;
+          num_indices += 8;
+
+          fluid_sim_debug->set_num_vertices(num_vertices);
+          fluid_sim_debug->set_num_indices(num_indices);
+        }
+        {
+          // VELOCITIES
+          gl_resource::wolock vlock(fluid_sim_vel_debug->get_vertices());
+          fire_vertex *vtx = (fire_vertex*)vlock.u8();
+          gl_resource::wolock ilock(fluid_sim_vel_debug->get_indices());
+          uint32_t *idx = ilock.u32();
+          unsigned num_vertices = 0;
+          unsigned num_indices = 0;
+
+          vec3 origin_pos = get_aabb().get_min();
+          vec3 dimentions = get_aabb().get_half_extent() * 2.0f;
+          vec3 n = cameraToWorld.z().xyz();
+          float x_step = dimentions[0] / (x_length + 2);
+          float y_step = dimentions[1] / (y_length + 2);
+          float z_step = dimentions[2] / (z_length + 2);
+          for (int i = 0; i <= (x_length + 1); i++) {
+            for (int j = 0; j <= (y_length + 1); j++) {
+              for (int k = 0; k <= (z_length + 1); k++) {
+                vtx->pos = vec3(origin_pos.x() + x_step * 0.5f + i * x_step, origin_pos.y() + y_step * 0.5f + j * y_step, origin_pos.z() + z_step * 0.5f + k * z_step);
+                vtx->normal = n;
+                vtx->uv = vec2p(0, 0);
+                vtx->color = vec4(0.5f, 0.5f, 1.0f, 1.0f);
+                vtx++;
+                vtx->pos = vec3(origin_pos.x() + x_step * 0.5f + i * x_step + u[IX(i,j,k)] , origin_pos.y() + y_step * 0.5f + j * y_step + v[IX(i, j, k)], origin_pos.z() + z_step * 0.5f + k * z_step + w[IX(i, j, k)]);
+                vtx->normal = n;
+                vtx->uv = vec2p(0, 0);
+                vtx->color = vec4(0.5f, 0.5f, 1.0f, 1.0f);
+                vtx++;
+
+                idx[0] = num_vertices; idx[1] = num_vertices+1;
+                idx += 2;
+                num_vertices += 2;
+                num_indices += 2;
+              }
+            }
+          }
+          fluid_sim_vel_debug->set_num_vertices(num_vertices);
+          fluid_sim_vel_debug->set_num_indices(num_indices);
         }
       }
 
@@ -323,7 +401,6 @@ namespace octet {
         vec3 cx = cameraToWorld.x().xyz();
         vec3 cy = cameraToWorld.y().xyz();
         vec3 n = cameraToWorld.z().xyz();
-        mat4t transform;
         for (unsigned i = 0; i != fire_billboard_particles.size(); ++i) {
           fire_billboard_particle &p = fire_billboard_particles[i];
           if (p.enabled) {
@@ -353,6 +430,7 @@ namespace octet {
         //dump(log("mesh\n"));
 
         //render_debug();
+
       }
     
 
@@ -364,6 +442,16 @@ namespace octet {
         }
         return i;
       }
+
+      ref<mesh> get_debug_mesh() {
+        return fluid_sim_debug;
+      }
+
+      ref<mesh> get_debug_vel_mesh() {
+        return fluid_sim_vel_debug;
+      }
+
+      
     };
   }
 }

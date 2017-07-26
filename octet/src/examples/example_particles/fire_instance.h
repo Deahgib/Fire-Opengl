@@ -2,16 +2,13 @@
 namespace octet {
   class fire_instance {
   private:
+    ref<mesh_instance> debug_msh_inst; // Density mesh GL_POINTS  debug
+    ref<mesh_instance> debug_msh_vel_inst; // Velocity mesh GL_LINES  debug
+    ref<mesh_instance> msh_inst; // Particle system Mesh - game output (GL_TRIANGLES)
     ref<param_shader> fire_shader;
     ref<material> fire_material;
+    ref<material> debug_material;
 
-    //enum {
-    //  particle_sampler_index = 0,
-    //  diffuse_sampler_index,
-    //  overlay_sampler_index
-    //};
-
-    // particle system
     ref<fire_particle_system> system;
 
     ref<param_uniform> time_index;
@@ -28,6 +25,8 @@ namespace octet {
     random* r;
     vec3 worldCoord;
     bool using_atlas_;
+
+    bool debug_view_;
 
     enum {
       slot_particle_diffuse = 0,
@@ -56,6 +55,8 @@ namespace octet {
       fire_shader = new param_shader("shaders/fire.vs", "shaders/panning_textured.fs");
       fire_material = new material(vec4(1, 1, 1, 1), fire_shader);
       //fire_shader->init(fire_material->get_params());
+
+      debug_material = new material(vec4(1, 1, 1, 1), new param_shader("shaders/simple_color.vs", "shaders/simple_color.fs"));
 
       worldCoord = pos;
       using_atlas_ = using_atlas;
@@ -92,6 +93,18 @@ namespace octet {
       overlay_noise = fire_material->add_sampler(slot_overlay_noise, atom_overlay_noise, overlay_noise_img, new sampler());
 
       system = new fire_particle_system(aabb(pos, vec3(1, 2, 1)), 256, 0, 256, using_atlas);
+
+      scene_node *node = new scene_node();
+      msh_inst = new mesh_instance(node, system, fire_material);
+
+      scene_node *debug_node = new scene_node();
+      debug_msh_inst = new mesh_instance(debug_node, system->get_debug_mesh(), debug_material);
+
+      scene_node *debug_vel_node = new scene_node();
+      debug_node->add_child(debug_vel_node);
+      debug_msh_vel_inst = new mesh_instance(debug_vel_node, system->get_debug_vel_mesh(), debug_material);
+
+      debug_view_ = true;
     }
   
     void update(camera_instance* ci, float time) {
@@ -101,7 +114,7 @@ namespace octet {
       fire_particle_system::fire_billboard_particle p;
       memset(&p, 0, sizeof(p));
       //p.pos = vec3p(worldCoord[0] + r->get(-1.0f, 1.0f), worldCoord[1] + r->get(-1.0f, 1.0f), worldCoord[2] + r->get(-1.0f, 1.0f));
-      p.pos = vec3p(worldCoord[0] + r->get(-0.01f, 0.01f), worldCoord[1]-1.8f, worldCoord[2]);
+      p.pos = vec3p(worldCoord[0] + r->get(-0.1f, 0.1f), worldCoord[1]-1.8f, worldCoord[2]);
       //p.uv_bottom_left = vec2p(1.0f, 0.0f);
       //p.uv_top_right = vec2p(0.0f, 1.0f);
       if(using_atlas_){
@@ -146,32 +159,40 @@ namespace octet {
       //fire_material->set_uniform(time_index, &time, sizeof(time));
 
       system->set_cameraToWorld(ci->get_node()->calcModelToWorld());
-      system->animate(1.0f / 30);
+      system->animate(time);
+      
       system->update();
-
+      if (debug_view_) {
+        system->update_fluid_sim();
+      }
+      
+      
     }
 
     void update_input(app_common *in) {
       if (in->is_key_down('X')) { system->addWind(); }
 
+      if (in->is_key_going_down('C')) { system->clear_fluid_sim(); }
 
-	  if (in->is_key_going_down('Z')) { system->activate_source(); }
-
-
-	  if (in->is_key_going_down('C')) { system->clear(); }
+      if (in->is_key_going_down('H')) { 
+        debug_view_ = !debug_view_; 
+        debug_msh_inst->get_node()->set_enabled(debug_view_);
+      }
+      
     }
 
-	void render_debug() {
-		system->render_debug();
-	}
-
-    ref<material> get_material() {
-      return fire_material;
+    ref<mesh_instance> get_mesh_instance() {
+      return msh_inst;
     }
 
-    ref<mesh_particle_system> get_particle_system() {
-      return system;
+    ref<mesh_instance> get_debug_mesh_instance() {
+      return debug_msh_inst;
     }
-    
+    ref<mesh_instance> get_debug_mesh_vel_instance() {
+      return debug_msh_vel_inst;
+    }
+
+
+
   };
 }

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -15,6 +15,7 @@
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>example_particles</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <ProjectName>fire_opengl</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -28,7 +29,7 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -213,16 +214,32 @@
     <ClInclude Include="..\..\shaders\bump_shader.h" />
     <ClInclude Include="..\..\shaders\color_shader.h" />
     <ClInclude Include="..\..\shaders\compute_shader.h" />
+    <ClInclude Include="..\..\shaders\fluid_shader.h" />
     <ClInclude Include="..\..\shaders\phong_shader.h" />
     <ClInclude Include="..\..\shaders\shader.h" />
     <ClInclude Include="..\..\shaders\shaders.h" />
     <ClInclude Include="..\..\shaders\texture_shader.h" />
     <ClInclude Include="camera_controller.h" />
-    <ClInclude Include="fire_instance.h" />
     <ClInclude Include="fire_opengl.h" />
+    <ClInclude Include="fire_instance.h" />
     <ClInclude Include="fluid_simulator.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\..\shaders\cubemap.fs" />
+    <None Include="..\..\..\shaders\default.vs" />
+    <None Include="..\..\..\shaders\default_solid.fs" />
+    <None Include="..\..\..\shaders\default_textured.fs" />
+    <None Include="..\..\..\shaders\fire.vs" />
+    <None Include="..\..\..\shaders\helix.cs" />
+    <None Include="..\..\..\shaders\multitexture.fs" />
+    <None Include="..\..\..\shaders\panning_textured.fs" />
+    <None Include="..\..\..\shaders\raycast.fs" />
+    <None Include="..\..\..\shaders\raycast_meta.fs" />
+    <None Include="..\..\..\shaders\raycast_molecule.fs" />
+    <None Include="..\..\..\shaders\simple_color.fs" />
+    <None Include="..\..\..\shaders\simple_color.vs" />
+    <None Include="..\..\..\shaders\spots.fs" />
+    <None Include="..\..\..\shaders\text.fs" />
     <None Include="..\..\resources\mesh_builder.inl" />
     <None Include="..\..\resources\resources.inl" />
   </ItemGroup>
