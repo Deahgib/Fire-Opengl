@@ -16,6 +16,7 @@ namespace octet {
       struct fire_billboard_particle : billboard_particle {
         vec4 color;
       };
+
     private:
       // Fluid sim
       fluid_simulator fluid_sim;
@@ -26,8 +27,14 @@ namespace octet {
       float diffuse_rate;
       float viscosity;
 
+      //Fluid calculation
+      ref<mesh> fluid_sim_data;
+
+      // Fluid debug (visual)
       ref<mesh> fluid_sim_debug;
       ref<mesh> fluid_sim_vel_debug;
+      
+      
       // particle system
       vec4 concat_atlas_uvs[4];
       bool using_atlas_;
@@ -35,6 +42,8 @@ namespace octet {
       dynarray<fire_billboard_particle> fire_billboard_particles;
 
       void init_fluid_sim() {
+        
+
         x_length = 16;
         y_length = 32;
         z_length = 16;
@@ -136,22 +145,16 @@ namespace octet {
       }
 
       void get_velocity(const aabb bounds, vec3 pos, vec3 &vel, float &den) {
-        if (bounds.intersects(pos)) {
           vec3 min = bounds.get_min();
           vec3 max = bounds.get_max();
-          int x_idx = round((pos[0] - min[0]) / (max[0] - min[0]) * (float)x_length);
-          int y_idx = round((pos[1] - min[1]) / (max[1] - min[1]) * (float)y_length);
-          int z_idx = round((pos[2] - min[2]) / (max[2] - min[2]) * (float)z_length);
+          int x_idx = (int)round((pos[0] - min[0]) / (max[0] - min[0]) * (float)x_length);
+          int y_idx = (int)round((pos[1] - min[1]) / (max[1] - min[1]) * (float)y_length);
+          int z_idx = (int)round((pos[2] - min[2]) / (max[2] - min[2]) * (float)z_length);
           vel[0] = u[IX(x_idx, y_idx, z_idx)];
           vel[1] = v[IX(x_idx, y_idx, z_idx)];
           vel[2] = w[IX(x_idx, y_idx, z_idx)];
           den = dens[IX(x_idx, y_idx, z_idx)];
           //printf("New vel: %f %f %f\n", vel.x(), vel.y(), vel.z());
-        }
-        else
-        {
-          printf("Out of bounds: %f %f %f\n", pos.x(), pos.y(), pos.z());
-        }
       }
 
 
@@ -248,6 +251,24 @@ namespace octet {
         dens_prev[IX(x_length / 2, y_length / 8, z_length / 2)] = 200.0f;
       }
 
+      void add_source_force(vec3 pos, vec3 direction, float energy) {
+        vec3 min = get_aabb().get_min();
+        vec3 max = get_aabb().get_max();
+        vec3 dim = max - min;
+
+        int max_vol = MAX(MAX(x_length, y_length), z_length);
+
+        int x_idx = (int)round((pos[0] - min[0]) / (max[0] - min[0]) * (float)x_length);
+        int y_idx = (int)round((pos[1] - min[1]) / (max[1] - min[1]) * (float)y_length);
+        int z_idx = (int)round((pos[2] - min[2]) / (max[2] - min[2]) * (float)z_length);
+
+        direction.normalize();
+        u_prev[IX(x_idx, y_idx, z_idx)] = direction[0] * (x_length / dim[0] * energy);
+        v_prev[IX(x_idx, y_idx, z_idx)] = direction[1] * (y_length / dim[1] * energy);
+        w_prev[IX(x_idx, y_idx, z_idx)] = direction[2] * (z_length / dim[2] * energy);
+        dens_prev[IX(x_idx, y_idx, z_idx)] = (max_vol*max_vol*max_vol) / fs_size * energy;
+      }
+
       /// Update the vertices for newtonian physics.
       void animate(float time_step) {
         time_step *= 10.0f;
@@ -255,8 +276,8 @@ namespace octet {
         //if (t < 0.01f) {
         //  //u_prev[IX(x_length / 2, y_length / 2, 3 * z_length / 4)] = -2000.0f;
         //}
-        v_prev[IX(x_length / 2, 2, z_length / 2)] = 1.0f;
-        dens_prev[IX(x_length / 2, 2, z_length / 2)] = 20.0f;
+        //v_prev[IX(x_length / 2, 2, z_length / 2)] = 1.0f;
+        //dens_prev[IX(x_length / 2, 2, z_length / 2)] = 20.0f;
         fluid_sim.vel_step(x_length, y_length, z_length, u, v, w, u_prev, v_prev, w_prev, viscosity, time_step);
         fluid_sim.dens_step(x_length, y_length, z_length, dens, dens_prev, u, v, w, diffuse_rate, time_step);
         vec3 n_vel;
@@ -283,7 +304,8 @@ namespace octet {
               }
               //p.angle += (uint32_t)(g.spin * time_step);
               p.size = get_size_for_age(g.age, g.lifetime) * 0.2f;
-              p.color = vec4(density, density - 2.0f, density - 1.0f, (density < 0.8f)? density : 0.8f);
+              p.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+              //p.color = vec4(density, density - 2.0f, density - 1.0f, (density < 0.8f)? density : 0.8f);
                 //get_color_for_age(g.age, g.lifetime);
               g.age++;
             }
@@ -295,6 +317,7 @@ namespace octet {
         }
       }
 
+      // Updates the debug mesh with the fluid simulator data. ONly used for debuging
       void update_fluid_sim() {
         // DENSITIES
         {
@@ -328,14 +351,14 @@ namespace octet {
             }
           }
           // AABB CORNERS IN GREEN
-          vtx->pos = vec3p(origin_pos);                                                                                    /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
-          vtx->pos = vec3(origin_pos[0] + dimentions[0], origin_pos[1], origin_pos[2]);                                   /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
-          vtx->pos = vec3(origin_pos[0], origin_pos[1], origin_pos[2] + dimentions[2]);                                   /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
-          vtx->pos = vec3(origin_pos[0] + dimentions[0], origin_pos[1], origin_pos[2] + dimentions[2]);                  /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
-          vtx->pos = vec3(origin_pos[0], origin_pos[1] + dimentions[1], origin_pos[2]);                                   /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
-          vtx->pos = vec3(origin_pos[0] + dimentions[0], origin_pos[1] + dimentions[1], origin_pos[2]);                  /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
-          vtx->pos = vec3(origin_pos[0], origin_pos[1] + dimentions[1], origin_pos[2] + dimentions[2]);                  /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
-          vtx->pos = vec3(origin_pos[0] + dimentions[0], origin_pos[1] + dimentions[1], origin_pos[2] + dimentions[2]); /* | */ vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3p(origin_pos);                                                                                   vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3(origin_pos[0] + dimentions[0],  origin_pos[1],                  origin_pos[2]);                 vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3(origin_pos[0],                  origin_pos[1],                  origin_pos[2] + dimentions[2]); vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3(origin_pos[0] + dimentions[0],  origin_pos[1],                  origin_pos[2] + dimentions[2]); vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3(origin_pos[0],                  origin_pos[1] + dimentions[1],  origin_pos[2]);                 vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3(origin_pos[0] + dimentions[0],  origin_pos[1] + dimentions[1],  origin_pos[2]);                 vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3(origin_pos[0],                  origin_pos[1] + dimentions[1],  origin_pos[2] + dimentions[2]); vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
+          vtx->pos = vec3(origin_pos[0] + dimentions[0],  origin_pos[1] + dimentions[1],  origin_pos[2] + dimentions[2]); vtx->normal = n; vtx->uv = vec2p(0, 0); vtx->color = vec4(0.0f, 1.0f, 0.0f, 1.0f); vtx++;
 
           idx[0] = num_vertices;     idx[1] = num_vertices + 1; idx[2] = num_vertices + 2; idx[3] = num_vertices + 3;
           idx[4] = num_vertices + 4; idx[5] = num_vertices + 5; idx[6] = num_vertices + 6; idx[7] = num_vertices + 7;
@@ -364,15 +387,38 @@ namespace octet {
           for (int i = 0; i <= (x_length + 1); i++) {
             for (int j = 0; j <= (y_length + 1); j++) {
               for (int k = 0; k <= (z_length + 1); k++) {
-                vtx->pos = vec3(origin_pos.x() + x_step * 0.5f + i * x_step, origin_pos.y() + y_step * 0.5f + j * y_step, origin_pos.z() + z_step * 0.5f + k * z_step);
+                vec3 p = vec3(origin_pos.x() + x_step * 0.5f + i * x_step, origin_pos.y() + y_step * 0.5f + j * y_step, origin_pos.z() + z_step * 0.5f + k * z_step);
+                vec3 p2 = vec3(origin_pos.x() + x_step * 0.5f + i * x_step + u[IX(i, j, k)], origin_pos.y() + y_step * 0.5f + j * y_step + v[IX(i, j, k)], origin_pos.z() + z_step * 0.5f + k * z_step + w[IX(i, j, k)]);
+                vec3 mag = p2 - p;
+                vec4 col;
+                if (mag.length() < 1) {
+                  col = vec4(0.878431f, 1.0f, 1.0f, 1.0f);
+                }
+                else if (mag.length() < 2){
+                  col = vec4(0.219608f, 0.556863f, 0.556863f, 1.0f);
+                }
+                else if (mag.length() < 3) {
+                  col = vec4(0.443137f, 0.776471f, 0.443137f, 1.0f);
+                }
+                else if (mag.length() < 4) {
+                  col = vec4(1.0f, 0.388235f, 0.278431f, 1.0f);
+                }
+                else if (mag.length() < 5) {
+                  col = vec4(0.862745f, 0.0784314f, 0.235294f, 1.0f);
+                }
+                else {
+                  col = vec4(0.580392f, 0.0f, 0.827451f, 1.0f);
+                }
+
+                vtx->pos = p;
                 vtx->normal = n;
                 vtx->uv = vec2p(0, 0);
-                vtx->color = vec4(0.5f, 0.5f, 1.0f, 1.0f);
+                vtx->color = col;
                 vtx++;
-                vtx->pos = vec3(origin_pos.x() + x_step * 0.5f + i * x_step + u[IX(i,j,k)] , origin_pos.y() + y_step * 0.5f + j * y_step + v[IX(i, j, k)], origin_pos.z() + z_step * 0.5f + k * z_step + w[IX(i, j, k)]);
+                vtx->pos = p2;
                 vtx->normal = n;
                 vtx->uv = vec2p(0, 0);
-                vtx->color = vec4(0.5f, 0.5f, 1.0f, 1.0f);
+                vtx->color = col;
                 vtx++;
 
                 idx[0] = num_vertices; idx[1] = num_vertices+1;

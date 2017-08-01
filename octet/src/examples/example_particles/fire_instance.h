@@ -1,4 +1,5 @@
 #pragma once
+
 namespace octet {
   class fire_instance {
   private:
@@ -77,20 +78,11 @@ namespace octet {
       fire_material->set_uniform(overlay_bl_index, &overlay_bl, sizeof(overlay_bl));
 
       // TEXTURE DATA
-      atom_t atom_particle_diffuse = app_utils::get_atom("particle_diffuse");
-      particle_diffuse = fire_material->add_sampler(slot_particle_diffuse, atom_particle_diffuse, particle_diffuse_img, new sampler());
-      
-      atom_t atom_particle_mask = app_utils::get_atom("particle_mask");
-      particle_mask = fire_material->add_sampler(slot_particle_mask, atom_particle_mask, particle_mask_img, new sampler());
-
-      atom_t atom_overlay_diffuse = app_utils::get_atom("overlay_diffuse");
-      overlay_diffuse = fire_material->add_sampler(slot_overlay_diffuse, atom_overlay_diffuse, overlay_diffuse_img, new sampler());
-
-      atom_t atom_overlay_mask = app_utils::get_atom("overlay_mask");
-      overlay_mask = fire_material->add_sampler(slot_overlay_mask, atom_overlay_mask, overlay_mask_img, new sampler());
-
-      atom_t atom_overlay_noise = app_utils::get_atom("overlay_noise");
-      overlay_noise = fire_material->add_sampler(slot_overlay_noise, atom_overlay_noise, overlay_noise_img, new sampler());
+      particle_diffuse = fire_material->add_sampler(slot_particle_diffuse, app_utils::get_atom("particle_diffuse"), particle_diffuse_img, new sampler());
+      particle_mask = fire_material->add_sampler(slot_particle_mask, app_utils::get_atom("particle_mask"), particle_mask_img, new sampler());
+      overlay_diffuse = fire_material->add_sampler(slot_overlay_diffuse, app_utils::get_atom("overlay_diffuse"), overlay_diffuse_img, new sampler());
+      overlay_mask = fire_material->add_sampler(slot_overlay_mask, app_utils::get_atom("overlay_mask"), overlay_mask_img, new sampler());
+      overlay_noise = fire_material->add_sampler(slot_overlay_noise, app_utils::get_atom("overlay_noise"), overlay_noise_img, new sampler());
 
       system = new fire_particle_system(aabb(pos, vec3(1, 2, 1)), 256, 0, 256, using_atlas);
 
@@ -98,6 +90,7 @@ namespace octet {
       msh_inst = new mesh_instance(node, system, fire_material);
 
       scene_node *debug_node = new scene_node();
+      node->add_child(debug_node);
       debug_msh_inst = new mesh_instance(debug_node, system->get_debug_mesh(), debug_material);
 
       scene_node *debug_vel_node = new scene_node();
@@ -157,6 +150,8 @@ namespace octet {
       system->add_particle_animator(pa);
 
       //fire_material->set_uniform(time_index, &time, sizeof(time));
+
+      system->add_source_force(vec3(worldCoord[0], worldCoord[1] - 1.8f, worldCoord[2]), vec3(0,1,0), 0.1f);
 
       system->set_cameraToWorld(ci->get_node()->calcModelToWorld());
       system->animate(time);

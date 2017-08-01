@@ -41,9 +41,11 @@
 // compute - opencl
 #if OCTET_OPENCL
   #ifdef WIN32
-    #pragma comment(lib, "../../../lib/x86/OpenCL.lib")
-  #else
+    // SWAPED LIB DIRECTORIES FOR TESTING! USING 64 bit lib Ifdef WIN32. ------ ATTENTION!
     #pragma comment(lib, "../../../lib/x86_64/OpenCL.lib")
+    
+  #else
+    #pragma comment(lib, "../../../lib/x86/OpenCL.lib")
   #endif
 
   #include "CL/cl.h"

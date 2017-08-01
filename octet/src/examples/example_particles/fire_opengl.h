@@ -42,11 +42,15 @@ namespace octet {
 
     /// this is called once OpenGL is initialized
     void app_init() {
+      opencl ocl;
+      ocl.init("CL_bin/test.cl");
+
+
       app_scene =  new visual_scene();
       app_scene->create_default_camera_and_lights();
 
       ci = app_scene->get_camera_instance(0);
-      ci->get_node()->translate(vec3(0,0,3));
+      ci->get_node()->translate(vec3(0,0,0.5f));
       ci->set_far_plane(1000.0f);
       camera_movement = new camera_controller(this);
       camera_movement->add_camera(ci);
@@ -67,10 +71,14 @@ namespace octet {
       mesh_instance *mi = fire->get_mesh_instance();
       app_scene->add_child(mi->get_node());
       app_scene->add_mesh_instance(mi);
-      mesh_instance *mi_debug = fire->get_debug_mesh_instance();
-      mi->get_node()->add_child(mi_debug->get_node());
-      app_scene->add_mesh_instance(mi_debug);
+      app_scene->add_mesh_instance(fire->get_debug_mesh_instance());
       app_scene->add_mesh_instance(fire->get_debug_mesh_vel_instance());
+
+
+
+
+
+
       /*fire_instance* fire2 = new fire_instance(&r);
       fire2->init(
         vec3(-5, -7, 0), 

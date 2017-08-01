@@ -22,22 +22,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if 0
+#if OCTET_OPENCL && 1
 namespace octet {
-  /// push an argument
-  template<class arg_t> void push(const arg_t &value) {
-    opencl *cl = get_cl();
-    if (cl->error_code) return;
-    cl->error_code = clSetKernelArg(get_obj(), num_args++, sizeof(value), (void *)&value);
-    if (cl->error_code) { log("push: error %s\n", cl->get_cl_error_name(cl->error_code)); }
-  }
 
-  // push a memory argument
-  template<> void push<mem>(const mem &_value) {
-    push(_value.get_obj());
-  }
-
-  
   /// wrapper for building opencl programs and executing them.
   class opencl {
     cl_int error_code;
@@ -46,6 +33,19 @@ namespace octet {
     dynarray<cl_device_id> devices;
     
     cl_program program;
+
+    /// push an argument
+    template<class arg_t> void push(const arg_t &value) {
+      opencl *cl = get_cl();
+      if (cl->error_code) return;
+      cl->error_code = clSetKernelArg(get_obj(), num_args++, sizeof(value), (void *)&value);
+      if (cl->error_code) { log("push: error %s\n", cl->get_cl_error_name(cl->error_code)); }
+    }
+
+    //// push a memory argument
+    //template<> void push<mem>(const mem &_value) {
+    //  push(_value.get_obj());
+    //}
 
     static const char *get_cl_error_name(cl_int error) {
       switch (error) {
@@ -205,6 +205,7 @@ namespace octet {
       program = clCreateProgramWithSource(context, 2, source_ptr, source_sizes, &error_code);
       if (!program || error_code) {
         log("unable to create program\n");
+        printf("unable to create program\n");
         return;
       }
  
@@ -215,10 +216,11 @@ namespace octet {
         char build_log[2048];
         clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, sizeof(build_log), &build_log, NULL);
         fputs(build_log, log("build errors:\n"));
+        printf("build errors\n");
         return;
       }
 
-      //printf("done\n");
+      printf("done creating opencl context\n");
       log("done creating opencl context\n");
     }
 
