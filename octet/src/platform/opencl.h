@@ -34,19 +34,6 @@ namespace octet {
     
     cl_program program;
 
-    /// push an argument
-    template<class arg_t> void push(const arg_t &value) {
-      opencl *cl = get_cl();
-      if (cl->error_code) return;
-      cl->error_code = clSetKernelArg(get_obj(), num_args++, sizeof(value), (void *)&value);
-      if (cl->error_code) { log("push: error %s\n", cl->get_cl_error_name(cl->error_code)); }
-    }
-
-    //// push a memory argument
-    //template<> void push<mem>(const mem &_value) {
-    //  push(_value.get_obj());
-    //}
-
     static const char *get_cl_error_name(cl_int error) {
       switch (error) {
         case CL_SUCCESS: return "CL_SUCCESS";
@@ -133,7 +120,7 @@ namespace octet {
         clGetDeviceInfo(devices[0], CL_DEVICE_LOCAL_MEM_SIZE, sizeof(lms), &lms, NULL);
         char buf[512];
         clGetPlatformInfo(platform, CL_PLATFORM_VENDOR, sizeof(buf), buf, NULL);
-        printf("%-40s:   %2d devs  %2d cus  %5d MB global  %5d local\n", buf, numDevices, mcu, (unsigned)gms/0x100000, (unsigned)lms);
+        printf("%-40s:\n   %2d devs\n   %2d cus\n   %5d MB global\n   %5d local\n", buf, numDevices, mcu, (unsigned)gms/0x100000, (unsigned)lms);
         if (strstr(buf, prefered_platform)) {
           best_platform = platform;
         }
@@ -282,21 +269,26 @@ namespace octet {
         set_obj(
           clCreateBuffer(_cl->context, flags, size, ptr, &_cl->error_code)
         );
+        if (_cl->error_code) printf("Create Buffer: error %s\n", _cl->get_cl_error_name(_cl->error_code));
       }
 
       /// queue a copy from a buffer to cpu memory
-      cl_event read(size_t size, void *ptr, cl_event event=0, bool want_res_event=false) {
+      cl_event read(size_t size, void *ptr, cl_int num_events = 0, cl_event* event_list = NULL, bool want_res_event=false) {
         cl_event res_event = 0;
         opencl *cl = get_cl();
-        cl->error_code = clEnqueueReadBuffer(cl->queue, get_obj(), CL_FALSE, 0, size, ptr, event != 0, &event, want_res_event ? &res_event : NULL);
+        cl->error_code = clEnqueueReadBuffer(cl->queue, get_obj(), CL_FALSE, 0, size, ptr, num_events, event_list, want_res_event ? &res_event : NULL);
+        //cl->error_code = clEnqueueReadBuffer(cl->queue, get_obj(), CL_TRUE, 0, size, ptr, 0, NULL, NULL);
+        if (cl->error_code) printf("Enqueue Read: error %s\n", cl->get_cl_error_name(cl->error_code));
         return res_event;
       }
 
       /// queue a copy from cpu memory to a buffer
-      cl_event write(size_t size, const void *ptr, cl_event event=0, bool want_res_event=false) {
+      cl_event write(size_t size, const void *ptr, cl_int num_events = 0, cl_event* event_list = NULL, bool want_res_event=false) {
         cl_event res_event = 0;
         opencl *cl = get_cl();
-        cl->error_code = clEnqueueWriteBuffer(cl->queue, get_obj(), CL_FALSE, 0, size, ptr, event != 0, &event, want_res_event ? &res_event : NULL);
+        cl->error_code = clEnqueueWriteBuffer(cl->queue, get_obj(), CL_FALSE, 0, size, ptr, 0, event_list, want_res_event ? &res_event : NULL);
+        //cl->error_code = clEnqueueWriteBuffer(cl->queue, get_obj(), CL_TRUE, 0, size, ptr, 0, NULL, NULL);
+        if (cl->error_code) printf("Enqueue Write: error %s\n", cl->get_cl_error_name(cl->error_code));
         return res_event;
       }
     };
@@ -363,6 +355,7 @@ namespace octet {
         set_obj(
           clCreateKernel(cl->program, kernel_name, NULL)
         );
+        if(!get_obj()) printf("Error: Failed to create compute kernel!\n");
         num_args = 0;
         prefered_workgroup_size = 32;
         local_mem_size = 0;
@@ -370,6 +363,19 @@ namespace octet {
         clGetKernelWorkGroupInfo(get_obj(), cl->devices[0], CL_KERNEL_LOCAL_MEM_SIZE, sizeof(local_mem_size), &local_mem_size, NULL);
         clGetKernelWorkGroupInfo(get_obj(), cl->devices[0], CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(prefered_workgroup_size), &prefered_workgroup_size, NULL);
         max_work_items = prefered_workgroup_size * 32;
+      }
+
+      /// push an argument
+      template<class arg_t> void push(const arg_t &value) {
+        opencl *cl = get_cl();
+        if (cl->error_code) return;
+        cl->error_code = clSetKernelArg(get_obj(), num_args++, sizeof(value), (void *)&value);
+        if (cl->error_code) { printf("push: error %s\n", cl->get_cl_error_name(cl->error_code)); }
+      }
+
+      // push a memory argument
+      template<> void push<mem>(const mem &_value) {
+        push(_value.get_obj());
       }
 
       size_t get_local_mem_size() const {
@@ -386,7 +392,7 @@ namespace octet {
       }
 
       /// queue a call
-      cl_event call(size_t num_work_items, size_t work_group_size, cl_event event=0, bool want_res_event=false) {
+      cl_event call(size_t num_work_items, size_t work_group_size, cl_int num_events = 0, cl_event* event_list = NULL, bool want_res_event=false) {
         cl_event res_event;
         work_group_size = work_group_size ? work_group_size : prefered_workgroup_size;
         opencl *cl = get_cl();
@@ -408,7 +414,7 @@ namespace octet {
   	      size_t local_work_size[1] = {work_group_size};
           cl->error_code = clEnqueueNDRangeKernel(
             cl->queue, get_obj(), 1, global_work_offset, global_work_size, local_work_size,
-            event != 0, &event, want_res_event ? &res_event : NULL
+            num_events, event_list, want_res_event ? &res_event : NULL
           );
           if (cl->error_code) {
             log("call: error %s\n", cl->get_cl_error_name(cl->error_code));
