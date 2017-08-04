@@ -3,8 +3,10 @@
 namespace octet {
   class fire_instance {
   private:
+#if FIRE_DEBUG
     ref<mesh_instance> debug_msh_inst; // Density mesh GL_POINTS  debug
     ref<mesh_instance> debug_msh_vel_inst; // Velocity mesh GL_LINES  debug
+#endif
     ref<mesh_instance> msh_inst; // Particle system Mesh - game output (GL_TRIANGLES)
     ref<param_shader> fire_shader;
     ref<material> fire_material;
@@ -29,6 +31,21 @@ namespace octet {
 
     bool debug_view_;
 
+    // Fluid sim vars
+    fluid_simulator fluid_sim;
+    int x_length, y_length, z_length;
+    u_int fs_size;
+    float * u, *v, *w, *u_prev, *v_prev, *w_prev;
+    float * dens, *dens_prev;
+    float diffuse_rate;
+    float viscosity;
+
+    opencl* ocl;
+    opencl::kernel fluid_kernel;
+    opencl::mem dens_GPU_mem, dens_prev_GPU_mem;
+    opencl::mem u_GPU_mem, v_GPU_mem, w_GPU_mem;
+    opencl::mem u_prev_GPU_mem, v_prev_GPU_mem, w_prev_GPU_mem;
+
     enum {
       slot_particle_diffuse = 0,
       slot_particle_mask,
@@ -38,6 +55,48 @@ namespace octet {
       tot_textures
     };
 
+    void free_data()
+    {
+      if (u) free(u);
+      if (v) free(v);
+      if (w) free(w);
+      if (u_prev) free(u_prev);
+      if (v_prev) free(v_prev);
+      if (w_prev) free(w_prev);
+      if (dens) free(dens);
+      if (dens_prev) free(dens_prev);
+    }
+
+    void clear_data()
+    {
+      int i, size = (x_length + 2)*(y_length + 2)*(z_length + 2);
+
+      for (i = 0; i < size; i++) {
+        u[i] = v[i] = w[i] = u_prev[i] = v_prev[i] = w_prev[i] = dens[i] = dens_prev[i] = 0.0f;
+      }
+    }
+
+    int allocate_data()
+    {
+      int size = (x_length + 2)*(y_length + 2)*(z_length + 2);
+
+      u = (float *)malloc(size * sizeof(float));
+      v = (float *)malloc(size * sizeof(float));
+      w = (float *)malloc(size * sizeof(float));
+      u_prev = (float *)malloc(size * sizeof(float));
+      v_prev = (float *)malloc(size * sizeof(float));
+      w_prev = (float *)malloc(size * sizeof(float));
+      dens = (float *)malloc(size * sizeof(float));
+      dens_prev = (float *)malloc(size * sizeof(float));
+
+      if (!u || !v || !w || !u_prev || !v_prev || !w_prev || !dens || !dens_prev) {
+        //fprintf(stderr, "cannot allocate data\n");
+        printf("cannot allocate data\n");
+        return (0);
+      }
+
+      return (1);
+    }
 
   public:
     fire_instance(random* rand) {
@@ -89,6 +148,7 @@ namespace octet {
       scene_node *node = new scene_node();
       msh_inst = new mesh_instance(node, system, fire_material);
 
+#if FIRE_DEBUG
       scene_node *debug_node = new scene_node();
       node->add_child(debug_node);
       debug_msh_inst = new mesh_instance(debug_node, system->get_debug_mesh(), debug_material);
@@ -98,6 +158,118 @@ namespace octet {
       debug_msh_vel_inst = new mesh_instance(debug_vel_node, system->get_debug_vel_mesh(), debug_material);
 
       debug_view_ = true;
+#endif
+
+      init_fluid_sim();
+    }
+
+    void init_fluid_sim() 
+    {
+      x_length = 16;
+      y_length = 32;
+      z_length = 16;
+      //fluid_sim.init(x_length, y_length, z_length);
+      fs_size = (x_length + 2) * (y_length + 2) * (z_length + 2);
+      printf("size: %d \n", fs_size);
+      allocate_data();
+      clear_data();
+      // 6 here from dt reversing: ( float a = dt*diff*max*max*max; )  for testing
+      diffuse_rate = 0.0f;
+      viscosity = 0.0f;
+
+      for (int i = 0; i < fs_size; i++) {
+        if (dens[i] != 0.0f) {
+          printf("Non zero starting values\n");
+        }
+      }
+
+
+      dens_prev[1000] = 500.0f;
+
+      ocl = new opencl();
+      ocl->init("CL_bin/jos_stam_fluid.cl");
+      fluid_kernel      = opencl::kernel(ocl, "square");
+
+      dens_GPU_mem      = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+      dens_prev_GPU_mem = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+      u_GPU_mem         = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+      v_GPU_mem         = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+      w_GPU_mem         = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+      u_prev_GPU_mem    = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+      v_prev_GPU_mem    = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+      w_prev_GPU_mem    = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+
+      opencl::event dens_event      (ocl, dens_GPU_mem.write(sizeof(float)*fs_size,       dens,       0, NULL, true));
+      opencl::event dens_prev_event (ocl, dens_prev_GPU_mem.write(sizeof(float)*fs_size,  dens_prev,  0, NULL, true));
+      opencl::event u_event         (ocl, u_GPU_mem.write(sizeof(float)*fs_size,          u,          0, NULL, true));
+      opencl::event v_event         (ocl, v_GPU_mem.write(sizeof(float)*fs_size,          v,          0, NULL, true));
+      opencl::event w_event         (ocl, w_GPU_mem.write(sizeof(float)*fs_size,          w,          0, NULL, true));
+      opencl::event u_prev_event    (ocl, u_prev_GPU_mem.write(sizeof(float)*fs_size,     u_prev,     0, NULL, true));
+      opencl::event v_prev_event    (ocl, v_prev_GPU_mem.write(sizeof(float)*fs_size,     v_prev,     0, NULL, true));
+      opencl::event w_prev_event    (ocl, w_prev_GPU_mem.write(sizeof(float)*fs_size,     w_prev,     0, NULL, true));
+      ocl->wait(dens_event.get_obj());
+      ocl->wait(dens_prev_event.get_obj());
+      ocl->wait(u_event.get_obj());
+      ocl->wait(v_event.get_obj());
+      ocl->wait(w_event.get_obj());
+      ocl->wait(u_prev_event.get_obj());
+      ocl->wait(v_prev_event.get_obj());
+      ocl->wait(w_prev_event.get_obj());
+
+      fluid_kernel.push(dens_GPU_mem.get_obj()); 
+      fluid_kernel.push(dens_prev_GPU_mem.get_obj());
+      fluid_kernel.push(u_GPU_mem.get_obj());
+      fluid_kernel.push(v_GPU_mem.get_obj());
+      fluid_kernel.push(w_GPU_mem.get_obj());
+      fluid_kernel.push(u_prev_GPU_mem.get_obj());
+      fluid_kernel.push(v_prev_GPU_mem.get_obj());
+      fluid_kernel.push(w_prev_GPU_mem.get_obj());
+      fluid_kernel.push(x_length);
+      fluid_kernel.push(y_length);
+      fluid_kernel.push(z_length);
+      fluid_kernel.push(diffuse_rate);
+      fluid_kernel.push(viscosity);
+      fluid_kernel.push(1.0f);
+
+      opencl::event exec_event(ocl, fluid_kernel.call(1, 1, 0, NULL, true));
+      ocl->wait(exec_event.get_obj());
+
+      opencl::event read_event(ocl, dens_GPU_mem.read(sizeof(float)*fs_size, dens, 0, NULL, true));
+      ocl->wait(read_event.get_obj());
+
+      for (int i = 0; i < fs_size; i++) {
+        if (dens[i] != 0.0f) {
+          printf("Something got calculated!\n");
+        }
+      }
+
+      //opencl::event w_event(ocl, input.write(sizeof(float)*count, data, 0, NULL, true));
+      //ocl->wait(w_event.get_obj());
+      //
+      //kernel.push(input.get_obj());
+      //kernel.push(output.get_obj());
+      //kernel.push(count);
+
+      //opencl::event exec_event(ocl, kernel.call(count, 1, 0, NULL, true));
+      //ocl->wait(exec_event.get_obj());
+      ////ocl->flush();
+      //opencl::event r_event(ocl, output.read(sizeof(float)*count, results, 0, NULL, true));
+      //ocl->wait(r_event.get_obj());
+
+      //u_int correct = 0;
+      //for (int i = 0; i < count; i++) {
+      //  if (data[i] * data[i] == results[i]) {
+      //    correct ++;
+      //  }
+      //}
+      //if (correct = count) {
+      //  printf("OPENCL:  Working Correctly\n");
+      //}
+
+      //opencl::release(input.get_obj()); 
+      //opencl::release(output.get_obj()); 
+      //opencl::release(kernel.get_obj());
+      //delete ocl;
     }
   
     void update(camera_instance* ci, float time) {
@@ -157,9 +329,12 @@ namespace octet {
       system->animate(time);
       
       system->update();
+
+      #if FIRE_DEBUG
       if (debug_view_) {
         system->update_fluid_sim();
       }
+      #endif
       
       
     }
@@ -169,10 +344,12 @@ namespace octet {
 
       if (in->is_key_going_down('C')) { system->clear_fluid_sim(); }
 
+      #if FIRE_DEBUG
       if (in->is_key_going_down('H')) { 
         debug_view_ = !debug_view_; 
         debug_msh_inst->get_node()->set_enabled(debug_view_);
       }
+      #endif
       
     }
 
@@ -180,13 +357,14 @@ namespace octet {
       return msh_inst;
     }
 
+    #if FIRE_DEBUG
     ref<mesh_instance> get_debug_mesh_instance() {
       return debug_msh_inst;
     }
     ref<mesh_instance> get_debug_mesh_vel_instance() {
       return debug_msh_vel_inst;
     }
-
+    #endif
 
 
   };

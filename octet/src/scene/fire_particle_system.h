@@ -21,14 +21,21 @@ namespace octet {
       // Fluid sim
       fluid_simulator fluid_sim;
       int x_length, y_length, z_length;
-      int fs_size;
+      u_int fs_size;
       float * u, *v, *w, *u_prev, *v_prev, *w_prev;
       float * dens, *dens_prev;
       float diffuse_rate;
       float viscosity;
 
       //Fluid calculation
-      ref<mesh> fluid_sim_data;
+      //opencl ocl;
+      //opencl::kernel fluid_kernel;
+      //opencl::mem dens_GPU_mem, dens_prev_GPU_mem;
+      //opencl::mem u_GPU_mem, v_GPU_mem, w_GPU_mem;
+      //opencl::mem u_prev_GPU_mem, v_prev_GPU_mem, w_prev_GPU_mem;
+
+
+
 
       // Fluid debug (visual)
       ref<mesh> fluid_sim_debug;
@@ -42,12 +49,10 @@ namespace octet {
       dynarray<fire_billboard_particle> fire_billboard_particles;
 
       void init_fluid_sim() {
-        
-
         x_length = 16;
         y_length = 32;
         z_length = 16;
-        fluid_sim.init(x_length, y_length, z_length);
+        //fluid_sim.init(x_length, y_length, z_length);
         fs_size = (x_length + 2) * (y_length + 2) * (z_length + 2);
         printf("size: %d \n", fs_size);
         allocate_data();
@@ -55,6 +60,19 @@ namespace octet {
         // 6 here from dt reversing: ( float a = dt*diff*max*max*max; )  for testing
         diffuse_rate = 0.0f;
         viscosity = 0.0f;
+
+        //opencl *test = new opencl();
+        //cl_mem mem;
+        //fluid_kernel      = opencl::kernel(&ocl, "square");
+        /*dens_GPU_mem      = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+        dens_prev_GPU_mem = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+        u_GPU_mem         = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+        v_GPU_mem         = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+        w_GPU_mem         = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+        u_prev_GPU_mem    = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+        v_prev_GPU_mem    = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
+        w_prev_GPU_mem    = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);*/
+
 
         fluid_sim_debug = new mesh();
         fluid_sim_debug->add_attribute(attribute_pos, 3, GL_FLOAT, 0);
@@ -117,7 +135,8 @@ namespace octet {
         dens_prev = (float *)malloc(size * sizeof(float));
 
         if (!u || !v || !w || !u_prev || !v_prev || !w_prev || !dens || !dens_prev) {
-          fprintf(stderr, "cannot allocate data\n");
+          //fprintf(stderr, "cannot allocate data\n");
+          printf("cannot allocate data\n");
           return (0);
         }
 
@@ -278,8 +297,8 @@ namespace octet {
         //}
         //v_prev[IX(x_length / 2, 2, z_length / 2)] = 1.0f;
         //dens_prev[IX(x_length / 2, 2, z_length / 2)] = 20.0f;
-        fluid_sim.vel_step(x_length, y_length, z_length, u, v, w, u_prev, v_prev, w_prev, viscosity, time_step);
-        fluid_sim.dens_step(x_length, y_length, z_length, dens, dens_prev, u, v, w, diffuse_rate, time_step);
+        //fluid_sim.vel_step(x_length, y_length, z_length, u, v, w, u_prev, v_prev, w_prev, viscosity, time_step);
+        //fluid_sim.dens_step(x_length, y_length, z_length, dens, dens_prev, u, v, w, diffuse_rate, time_step);
         vec3 n_vel;
         float density = 0.0f;
 
@@ -312,11 +331,12 @@ namespace octet {
           }
         }
 
-        for (int i = 0; i < fs_size; i++) {
+        for (int i = 0; i < (int)fs_size; i++) {
           u_prev[i] = v_prev[i] = w_prev[i] = dens_prev[i] = 0.0f;
         }
       }
 
+#if FIRE_DEBUG
       // Updates the debug mesh with the fluid simulator data. ONly used for debuging
       void update_fluid_sim() {
         // DENSITIES
@@ -432,6 +452,7 @@ namespace octet {
           fluid_sim_vel_debug->set_num_indices(num_indices);
         }
       }
+#endif
 
       virtual void update() {
         //unsigned np = billboard_particles.size();

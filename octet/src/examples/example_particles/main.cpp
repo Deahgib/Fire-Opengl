@@ -7,6 +7,10 @@
 // Text overlay
 //
 
+#ifndef FIRE_DEBUG
+  #define FIRE_DEBUG 1
+#endif // !FIRE_DEBUG
+
 #include "../../octet.h"
 
 #include "fire_opengl.h"

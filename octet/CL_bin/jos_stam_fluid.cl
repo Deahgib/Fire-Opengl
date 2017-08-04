@@ -2,9 +2,6 @@
 #define SWAP(x0, x) {__global float *tmp = x0; x0 = x; x = tmp;}
 #define MAX(a,b)            (((a) > (b)) ? (a) : (b))
 
-
-
-
 void add_source(int M, int N, int O, __global float * x, __global float * s, float dt)
 {
 	int i, size = (M + 2)*(N + 2)*(O + 2);

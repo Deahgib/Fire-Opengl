@@ -42,52 +42,48 @@ namespace octet {
 
     /// this is called once OpenGL is initialized
     void app_init() {
-
       // OPEN CL TESTING -------------- START -------------------
-      const u_int count = 2048;
-      
-      float data[count];
-      float results[count];
-      for (int i = 0; i < count; i++) {
-        data[i] = 2.0f;
-      }
+      //const unsigned int count = 256;
+      //
+      //float data[count];
+      //float results[count];
+      //for (int i = 0; i < count; i++) {
+      //  data[i] = 2.0f;
+      //}
 
-      opencl* ocl = new opencl();
-      ocl->init("CL_bin/test.cl");
-      opencl::kernel kernel(ocl, "square");
-      opencl::mem input(ocl, CL_MEM_READ_ONLY, sizeof(float)*count, data);
-      opencl::mem output(ocl, CL_MEM_WRITE_ONLY, sizeof(float)*count, results);
+      //opencl* ocl = new opencl();
+      //ocl->init("CL_bin/test.cl");
+      //opencl::kernel kernel(ocl, "square");
+      //opencl::mem input(ocl, CL_MEM_READ_ONLY, sizeof(float)*count, data);
+      //opencl::mem output(ocl, CL_MEM_WRITE_ONLY, sizeof(float)*count, results);
 
-      opencl::event w_event(ocl, input.write(sizeof(float)*count, data, 0, NULL, true));
-      ocl->wait(w_event.get_obj());
-      
-      kernel.push(input.get_obj());
-      kernel.push(output.get_obj());
-      kernel.push(count);
+      //opencl::event w_event(ocl, input.write(sizeof(float)*count, data, 0, NULL, true));
+      //ocl->wait(w_event.get_obj());
+      //
+      //kernel.push(input.get_obj());
+      //kernel.push(output.get_obj());
+      //kernel.push(count);
 
-      opencl::event exec_event(ocl, kernel.call(count, 1, 0, NULL, true));
-      ocl->wait(exec_event.get_obj());
-      //ocl->flush();
-      opencl::event r_event(ocl, output.read(sizeof(float)*count, results, 0, NULL, true));
-      ocl->wait(r_event.get_obj());
+      //opencl::event exec_event(ocl, kernel.call(count, 1, 0, NULL, true));
+      //ocl->wait(exec_event.get_obj());
+      ////ocl->flush();
+      //opencl::event r_event(ocl, output.read(sizeof(float)*count, results, 0, NULL, true));
+      //ocl->wait(r_event.get_obj());
 
-      u_int correct = 0;
-      for (int i = 0; i < count; i++) {
-        if (data[i] * data[i] == results[i]) {
-          correct ++;
-        }
-      }
-      if (correct = count) {
-        printf("OPENCL:  Working Correctly");
-      }
+      //u_int correct = 0;
+      //for (int i = 0; i < count; i++) {
+      //  if (data[i] * data[i] == results[i]) {
+      //    correct ++;
+      //  }
+      //}
+      //if (correct = count) {
+      //  printf("OPENCL:  Working Correctly\n");
+      //}
 
-      opencl::release(input.get_obj()); 
-      opencl::release(output.get_obj()); 
-      opencl::release(kernel.get_obj());
-      opencl::release(exec_event.get_obj());
-      opencl::release(w_event.get_obj());
-      opencl::release(r_event.get_obj());
-      delete ocl;
+      //opencl::release(input.get_obj()); 
+      //opencl::release(output.get_obj()); 
+      //opencl::release(kernel.get_obj());
+      //delete ocl;
       // OPEN CL TESTING --------------- END ---------------------
 
       // Fire 
@@ -116,9 +112,10 @@ namespace octet {
       mesh_instance *mi = fire->get_mesh_instance();
       app_scene->add_child(mi->get_node());
       app_scene->add_mesh_instance(mi);
+      #if FIRE_DEBUG
       app_scene->add_mesh_instance(fire->get_debug_mesh_instance());
       app_scene->add_mesh_instance(fire->get_debug_mesh_vel_instance());
-
+      #endif
 
 
 

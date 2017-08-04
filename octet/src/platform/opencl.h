@@ -27,6 +27,7 @@ namespace octet {
 
   /// wrapper for building opencl programs and executing them.
   class opencl {
+  private:
     cl_int error_code;
     cl_context context;
     cl_command_queue queue;
@@ -203,7 +204,7 @@ namespace octet {
         char build_log[2048];
         clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, sizeof(build_log), &build_log, NULL);
         fputs(build_log, log("build errors:\n"));
-        printf("build errors\n");
+        printf("build errors: \n%s\n", build_log);
         return;
       }
 
@@ -370,7 +371,7 @@ namespace octet {
         opencl *cl = get_cl();
         if (cl->error_code) return;
         cl->error_code = clSetKernelArg(get_obj(), num_args++, sizeof(value), (void *)&value);
-        if (cl->error_code) { printf("push: error %s\n", cl->get_cl_error_name(cl->error_code)); }
+        if (cl->error_code) { printf("push: error %d %s\n", num_args-1, cl->get_cl_error_name(cl->error_code)); }
       }
 
       // push a memory argument
