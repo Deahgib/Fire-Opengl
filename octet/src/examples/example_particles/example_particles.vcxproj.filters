@@ -36,6 +36,9 @@
     <Filter Include="shader_code">
       <UniqueIdentifier>{d5f818a1-a93f-4b75-8ce6-fec77ea40be7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="CL_CODE">
+      <UniqueIdentifier>{e80c344b-b87e-48d4-ae21-fa417bee195a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -500,6 +503,12 @@
     </None>
     <None Include="..\..\..\shaders\fire.vs">
       <Filter>shader_code</Filter>
+    </None>
+    <None Include="..\..\..\CL_bin\jos_stam_fluid.cl">
+      <Filter>CL_CODE</Filter>
+    </None>
+    <None Include="..\..\..\CL_bin\test.cl">
+      <Filter>CL_CODE</Filter>
     </None>
   </ItemGroup>
 </Project>

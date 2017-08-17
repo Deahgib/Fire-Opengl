@@ -10,7 +10,7 @@ namespace octet {
     class fluid_simulator {
     private:
       int x_length, y_length, z_length;
-
+      //opencl* test;
       const int LINEARSOLVERTIMES = 10;
 
 

@@ -27,15 +27,6 @@ namespace octet {
       float diffuse_rate;
       float viscosity;
 
-      //Fluid calculation
-      //opencl ocl;
-      //opencl::kernel fluid_kernel;
-      //opencl::mem dens_GPU_mem, dens_prev_GPU_mem;
-      //opencl::mem u_GPU_mem, v_GPU_mem, w_GPU_mem;
-      //opencl::mem u_prev_GPU_mem, v_prev_GPU_mem, w_prev_GPU_mem;
-
-
-
 
       // Fluid debug (visual)
       ref<mesh> fluid_sim_debug;
@@ -60,18 +51,6 @@ namespace octet {
         // 6 here from dt reversing: ( float a = dt*diff*max*max*max; )  for testing
         diffuse_rate = 0.0f;
         viscosity = 0.0f;
-
-        //opencl *test = new opencl();
-        //cl_mem mem;
-        //fluid_kernel      = opencl::kernel(&ocl, "square");
-        /*dens_GPU_mem      = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
-        dens_prev_GPU_mem = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
-        u_GPU_mem         = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
-        v_GPU_mem         = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
-        w_GPU_mem         = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
-        u_prev_GPU_mem    = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
-        v_prev_GPU_mem    = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
-        w_prev_GPU_mem    = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);*/
 
 
         fluid_sim_debug = new mesh();
@@ -289,8 +268,16 @@ namespace octet {
       }
 
       /// Update the vertices for newtonian physics.
-      void animate(float time_step) {
-        time_step *= 10.0f;
+      void animate() {
+        //dens = _dens;
+        //dens_prev = _dens_prev;
+        //u = _u;
+        //v = _v;
+        //w = _w;
+        //u_prev = _u_prev;
+        //v_prev = _v_prev;
+        //w_prev = _w_prev;
+        
         //float t = rand.get(0.0f, 1.0f);
         //if (t < 0.01f) {
         //  //u_prev[IX(x_length / 2, y_length / 2, 3 * z_length / 4)] = -2000.0f;
@@ -299,6 +286,8 @@ namespace octet {
         //dens_prev[IX(x_length / 2, 2, z_length / 2)] = 20.0f;
         //fluid_sim.vel_step(x_length, y_length, z_length, u, v, w, u_prev, v_prev, w_prev, viscosity, time_step);
         //fluid_sim.dens_step(x_length, y_length, z_length, dens, dens_prev, u, v, w, diffuse_rate, time_step);
+
+
         vec3 n_vel;
         float density = 0.0f;
 
@@ -332,13 +321,13 @@ namespace octet {
         }
 
         for (int i = 0; i < (int)fs_size; i++) {
-          u_prev[i] = v_prev[i] = w_prev[i] = dens_prev[i] = 0.0f;
+          //u_prev[i] = v_prev[i] = w_prev[i] = dens_prev[i] = 0.0f;
         }
       }
 
 #if FIRE_DEBUG
       // Updates the debug mesh with the fluid simulator data. ONly used for debuging
-      void update_fluid_sim() {
+      void update_fluid_sim(float * dens, float * u, float * v, float * w) {
         // DENSITIES
         {
           gl_resource::wolock vlock(fluid_sim_debug->get_vertices());

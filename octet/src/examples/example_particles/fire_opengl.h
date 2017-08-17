@@ -42,50 +42,6 @@ namespace octet {
 
     /// this is called once OpenGL is initialized
     void app_init() {
-      // OPEN CL TESTING -------------- START -------------------
-      //const unsigned int count = 256;
-      //
-      //float data[count];
-      //float results[count];
-      //for (int i = 0; i < count; i++) {
-      //  data[i] = 2.0f;
-      //}
-
-      //opencl* ocl = new opencl();
-      //ocl->init("CL_bin/test.cl");
-      //opencl::kernel kernel(ocl, "square");
-      //opencl::mem input(ocl, CL_MEM_READ_ONLY, sizeof(float)*count, data);
-      //opencl::mem output(ocl, CL_MEM_WRITE_ONLY, sizeof(float)*count, results);
-
-      //opencl::event w_event(ocl, input.write(sizeof(float)*count, data, 0, NULL, true));
-      //ocl->wait(w_event.get_obj());
-      //
-      //kernel.push(input.get_obj());
-      //kernel.push(output.get_obj());
-      //kernel.push(count);
-
-      //opencl::event exec_event(ocl, kernel.call(count, 1, 0, NULL, true));
-      //ocl->wait(exec_event.get_obj());
-      ////ocl->flush();
-      //opencl::event r_event(ocl, output.read(sizeof(float)*count, results, 0, NULL, true));
-      //ocl->wait(r_event.get_obj());
-
-      //u_int correct = 0;
-      //for (int i = 0; i < count; i++) {
-      //  if (data[i] * data[i] == results[i]) {
-      //    correct ++;
-      //  }
-      //}
-      //if (correct = count) {
-      //  printf("OPENCL:  Working Correctly\n");
-      //}
-
-      //opencl::release(input.get_obj()); 
-      //opencl::release(output.get_obj()); 
-      //opencl::release(kernel.get_obj());
-      //delete ocl;
-      // OPEN CL TESTING --------------- END ---------------------
-
       // Fire 
       app_scene =  new visual_scene();
       app_scene->create_default_camera_and_lights();
@@ -118,23 +74,6 @@ namespace octet {
       #endif
 
 
-
-
-
-      /*fire_instance* fire2 = new fire_instance(&r);
-      fire2->init(
-        vec3(-5, -7, 0), 
-        new image("assets/fire/overlay_fire_texture_test_2.gif"), 
-        new image("assets/fire/overlay_fire_texture_test_2.gif"), 
-        new image("assets/fire/overlay_fire_texture_test_2.gif"), 
-        new image("assets/fire/overlay_fire_texture_test_2.gif"), 
-        new image("assets/fire/overlay_fire_texture_test_2.gif"), 
-        false);*/
-      //fires.push_back(fire2);
-      //scene_node *node2 = new scene_node();
-      //app_scene->add_child(node2);
-      //app_scene->add_mesh_instance(new mesh_instance(node2, fire2->get_particle_system(), fire2->get_material()));
-
       last_time = clock();
     }
 
@@ -143,6 +82,8 @@ namespace octet {
       clock_t time_diff = clock() - last_time;
       last_time = clock();
       float dt = (float)time_diff / CLOCKS_PER_SEC;
+      //printf("%f\n", 1.0f / dt); // FPS clock
+
 
       int vx = 0, vy = 0;
       get_viewport_size(vx, vy);

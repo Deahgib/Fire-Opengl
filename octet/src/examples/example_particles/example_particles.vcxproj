@@ -230,6 +230,8 @@
     <ClInclude Include="fluid_simulator.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\..\CL_bin\jos_stam_fluid.cl" />
+    <None Include="..\..\..\CL_bin\test.cl" />
     <None Include="..\..\..\shaders\cubemap.fs" />
     <None Include="..\..\..\shaders\default.vs" />
     <None Include="..\..\..\shaders\default_solid.fs" />

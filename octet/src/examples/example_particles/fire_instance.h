@@ -32,7 +32,6 @@ namespace octet {
     bool debug_view_;
 
     // Fluid sim vars
-    fluid_simulator fluid_sim;
     int x_length, y_length, z_length;
     u_int fs_size;
     float * u, *v, *w, *u_prev, *v_prev, *w_prev;
@@ -199,22 +198,22 @@ namespace octet {
       v_prev_GPU_mem    = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
       w_prev_GPU_mem    = opencl::mem(ocl, CL_MEM_READ_WRITE, sizeof(float) * fs_size, NULL);
 
-      opencl::event dens_event      (ocl, dens_GPU_mem.write(sizeof(float)*fs_size,       dens,       0, NULL, true));
-      opencl::event dens_prev_event (ocl, dens_prev_GPU_mem.write(sizeof(float)*fs_size,  dens_prev,  0, NULL, true));
-      opencl::event u_event         (ocl, u_GPU_mem.write(sizeof(float)*fs_size,          u,          0, NULL, true));
-      opencl::event v_event         (ocl, v_GPU_mem.write(sizeof(float)*fs_size,          v,          0, NULL, true));
-      opencl::event w_event         (ocl, w_GPU_mem.write(sizeof(float)*fs_size,          w,          0, NULL, true));
-      opencl::event u_prev_event    (ocl, u_prev_GPU_mem.write(sizeof(float)*fs_size,     u_prev,     0, NULL, true));
-      opencl::event v_prev_event    (ocl, v_prev_GPU_mem.write(sizeof(float)*fs_size,     v_prev,     0, NULL, true));
-      opencl::event w_prev_event    (ocl, w_prev_GPU_mem.write(sizeof(float)*fs_size,     w_prev,     0, NULL, true));
-      ocl->wait(dens_event.get_obj());
-      ocl->wait(dens_prev_event.get_obj());
-      ocl->wait(u_event.get_obj());
-      ocl->wait(v_event.get_obj());
-      ocl->wait(w_event.get_obj());
-      ocl->wait(u_prev_event.get_obj());
-      ocl->wait(v_prev_event.get_obj());
-      ocl->wait(w_prev_event.get_obj());
+      cl_event dens_event       = dens_GPU_mem.write(     sizeof(float) * fs_size,      dens, 0, NULL, true);
+      cl_event dens_prev_event  = dens_prev_GPU_mem.write(sizeof(float) * fs_size, dens_prev, 0, NULL, true);
+      cl_event u_event          = u_GPU_mem.write(        sizeof(float) * fs_size,         u, 0, NULL, true);
+      cl_event v_event          = v_GPU_mem.write(        sizeof(float) * fs_size,         v, 0, NULL, true);
+      cl_event w_event          = w_GPU_mem.write(        sizeof(float) * fs_size,         w, 0, NULL, true);
+      cl_event u_prev_event     = u_prev_GPU_mem.write(   sizeof(float) * fs_size,    u_prev, 0, NULL, true);
+      cl_event v_prev_event     = v_prev_GPU_mem.write(   sizeof(float) * fs_size,    v_prev, 0, NULL, true);
+      cl_event w_prev_event     = w_prev_GPU_mem.write(   sizeof(float) * fs_size,    w_prev, 0, NULL, true);
+      ocl->wait(dens_event);
+      ocl->wait(dens_prev_event);
+      ocl->wait(u_event);
+      ocl->wait(v_event);
+      ocl->wait(w_event);
+      ocl->wait(u_prev_event);
+      ocl->wait(v_prev_event);
+      ocl->wait(w_prev_event);
 
       fluid_kernel.push(dens_GPU_mem.get_obj()); 
       fluid_kernel.push(dens_prev_GPU_mem.get_obj());
@@ -231,40 +230,19 @@ namespace octet {
       fluid_kernel.push(viscosity);
       fluid_kernel.push(1.0f);
 
-      opencl::event exec_event(ocl, fluid_kernel.call(1, 1, 0, NULL, true));
-      ocl->wait(exec_event.get_obj());
+      cl_event exec_event = fluid_kernel.call(fs_size, 0, 0, NULL, true);
+      ocl->wait(exec_event);
 
-      opencl::event read_event(ocl, dens_GPU_mem.read(sizeof(float)*fs_size, dens, 0, NULL, true));
-      ocl->wait(read_event.get_obj());
+      //cl_event read_event = dens_GPU_mem.read(sizeof(float)*fs_size, dens, 0, NULL, true);
+      //ocl->wait(read_event);
 
+      int count = 0;
       for (int i = 0; i < fs_size; i++) {
-        if (dens[i] != 0.0f) {
-          printf("Something got calculated!\n");
+        if (dens[i] == 69.0f) {
+          count++;
         }
       }
-
-      //opencl::event w_event(ocl, input.write(sizeof(float)*count, data, 0, NULL, true));
-      //ocl->wait(w_event.get_obj());
-      //
-      //kernel.push(input.get_obj());
-      //kernel.push(output.get_obj());
-      //kernel.push(count);
-
-      //opencl::event exec_event(ocl, kernel.call(count, 1, 0, NULL, true));
-      //ocl->wait(exec_event.get_obj());
-      ////ocl->flush();
-      //opencl::event r_event(ocl, output.read(sizeof(float)*count, results, 0, NULL, true));
-      //ocl->wait(r_event.get_obj());
-
-      //u_int correct = 0;
-      //for (int i = 0; i < count; i++) {
-      //  if (data[i] * data[i] == results[i]) {
-      //    correct ++;
-      //  }
-      //}
-      //if (correct = count) {
-      //  printf("OPENCL:  Working Correctly\n");
-      //}
+      if (count == fs_size) printf("Kernel sweep. Test\n");
 
       //opencl::release(input.get_obj()); 
       //opencl::release(output.get_obj()); 
@@ -272,9 +250,28 @@ namespace octet {
       //delete ocl;
     }
   
+    void update_fluid() {
+      dens_prev[IX(8, 8, 8)] = 100.0f;
+      cl_event dens_event = dens_prev_GPU_mem.write(sizeof(float) * fs_size, dens_prev, 0, NULL, true);
+      ocl->wait(dens_event);
+
+      cl_event exec_event = fluid_kernel.call(fs_size/32, 32, 0, NULL, false);
+      //ocl->wait(exec_event);
+
+      cl_event read_event = dens_GPU_mem.read(sizeof(float)*fs_size, dens, 0, NULL, true);
+      ocl->finish();
+
+      int count = 0;
+      for (int i = 0; i < fs_size; i++) {
+        if (dens[i] == 69.0f) {
+          count++;
+        }
+      }
+      if (count == fs_size) printf("Kernel sweep.\n");
+    }
+
     void update(camera_instance* ci, float time) {
       float tex_toggle = r->get(0.0f, 1.0f);
-
 
       fire_particle_system::fire_billboard_particle p;
       memset(&p, 0, sizeof(p));
@@ -323,16 +320,18 @@ namespace octet {
 
       //fire_material->set_uniform(time_index, &time, sizeof(time));
 
+      update_fluid();
+
       system->add_source_force(vec3(worldCoord[0], worldCoord[1] - 1.8f, worldCoord[2]), vec3(0,1,0), 0.1f);
 
       system->set_cameraToWorld(ci->get_node()->calcModelToWorld());
-      system->animate(time);
+      system->animate();
       
       system->update();
 
       #if FIRE_DEBUG
       if (debug_view_) {
-        system->update_fluid_sim();
+        system->update_fluid_sim(dens, u, v, w);
       }
       #endif
       
