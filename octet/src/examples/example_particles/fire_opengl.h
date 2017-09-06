@@ -46,7 +46,7 @@ namespace octet {
       app_scene->create_default_camera_and_lights();
 
       ci = app_scene->get_camera_instance(0);
-      ci->get_node()->translate(vec3(0,0,3));
+      ci->get_node()->translate(vec3(0,0,-25));
       ci->set_far_plane(1000.0f);
       camera_movement = new camera_controller(this);
       camera_movement->add_camera(ci);
@@ -57,11 +57,11 @@ namespace octet {
       fire_instance* fire = new fire_instance(&r);
       fire->init(
         vec3(0, 0, 0),
-        new image("assets/fire/seamless_fire_texture_test.gif"),
+        new image("assets/fire/seamless_fire_texture_2.gif"),
         new image("assets/fire/fire_particle_6.gif"),
-        new image("assets/fire/seamless_fire_texture_test.gif"),
-        new image("assets/fire/seamless_fire_texture_test.gif"),
-        new image("assets/fire/seamless_fire_texture_test.gif"),
+        new image("assets/fire/seamless_fire_texture_2.gif"),
+        new image("assets/fire/seamless_fire_texture_2.gif"),
+        new image("assets/fire/seamless_fire_texture_2.gif"),
         true);
       fires.push_back(fire);
       mesh_instance *mi = fire->get_mesh_instance();
@@ -71,19 +71,36 @@ namespace octet {
       mi->get_node()->add_child(mi_debug->get_node());
       app_scene->add_mesh_instance(mi_debug);
       app_scene->add_mesh_instance(fire->get_debug_mesh_vel_instance());
-      /*fire_instance* fire2 = new fire_instance(&r);
-      fire2->init(
-        vec3(-5, -7, 0), 
-        new image("assets/fire/overlay_fire_texture_test_2.gif"), 
-        new image("assets/fire/overlay_fire_texture_test_2.gif"), 
-        new image("assets/fire/overlay_fire_texture_test_2.gif"), 
-        new image("assets/fire/overlay_fire_texture_test_2.gif"), 
-        new image("assets/fire/overlay_fire_texture_test_2.gif"), 
-        false);*/
-      //fires.push_back(fire2);
-      //scene_node *node2 = new scene_node();
-      //app_scene->add_child(node2);
-      //app_scene->add_mesh_instance(new mesh_instance(node2, fire2->get_particle_system(), fire2->get_material()));
+
+      /*ref<mesh> point;
+      ref<param_geom_shader> fire_shader = new param_geom_shader("shaders/fire.vs", "shaders/fire.fs", "shaders/test.gs");
+      ref<material> fire_material = new material(vec4(1, 1, 1, 1), fire_shader);
+      point = new mesh();
+      point->add_attribute(attribute_pos, 3, GL_FLOAT, 0);
+      point->add_attribute(attribute_normal, 3, GL_FLOAT, 12);
+      point->add_attribute(attribute_uv, 2, GL_FLOAT, 24);
+      point->add_attribute(attribute_color, 4, GL_FLOAT, 32);
+      point->set_params(48, 0, 0, GL_POINTS, GL_UNSIGNED_INT);
+
+      unsigned vsize = 1 * sizeof(fire_particle_system::fire_vertex);
+      unsigned isize = 1 * sizeof(uint32_t);
+      point->allocate(vsize, isize);
+
+      gl_resource::wolock vlock(point->get_vertices());
+      fire_particle_system::fire_vertex *vtx = (fire_particle_system::fire_vertex*)vlock.u8();
+      gl_resource::wolock ilock(point->get_indices());
+      uint32_t *idx = ilock.u32();
+      unsigned num_vertices = 0;
+      unsigned num_indices = 0;
+      vtx->pos = vec3(0,0,0); vtx->normal = vec3(0.0,0.0,1.0); vtx->color = vec4(1,1,0,1); vtx++;
+      idx[0] = num_vertices; idx++;
+      num_vertices++; num_indices++;
+      point->set_num_vertices(num_vertices);
+      point->set_num_indices(num_indices);
+      scene_node * node_ = new scene_node();
+      mesh_instance *mi_ = new mesh_instance(node_, point, fire_material);*/
+      //app_scene->add_child(node_);
+      //app_scene->add_mesh_instance(mi_);
 
       last_time = clock();
     }

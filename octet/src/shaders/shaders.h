@@ -33,5 +33,4 @@
   #include "../shaders/bump_shader.h"
   #include "../shaders/compute_shader.h"
   #include "../shaders/fire_shader.h"
-
 #endif

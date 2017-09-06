@@ -229,6 +229,8 @@
     <None Include="..\..\..\shaders\default.vs" />
     <None Include="..\..\..\shaders\default_solid.fs" />
     <None Include="..\..\..\shaders\default_textured.fs" />
+    <None Include="..\..\..\shaders\fire.fs" />
+    <None Include="..\..\..\shaders\fire.gs" />
     <None Include="..\..\..\shaders\fire.vs" />
     <None Include="..\..\..\shaders\helix.cs" />
     <None Include="..\..\..\shaders\multitexture.fs" />
@@ -239,6 +241,7 @@
     <None Include="..\..\..\shaders\simple_color.fs" />
     <None Include="..\..\..\shaders\simple_color.vs" />
     <None Include="..\..\..\shaders\spots.fs" />
+    <None Include="..\..\..\shaders\test.gs" />
     <None Include="..\..\..\shaders\text.fs" />
     <None Include="..\..\resources\mesh_builder.inl" />
     <None Include="..\..\resources\resources.inl" />

@@ -38,3 +38,5 @@ OCTET_CLASS(scene, mesh_points)
 OCTET_CLASS(scene, mesh_cylinder)
 //OCTET_CLASS(scene, value)
 OCTET_CLASS(scene, fire_particle_system)
+
+OCTET_CLASS(scene, param_geom_shader)

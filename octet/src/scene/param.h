@@ -299,6 +299,7 @@ namespace octet { namespace scene {
 
   /// Shader that uses parameters.
   class param_shader : public shader {
+  protected:
     std::string vertex_shader;
     std::string fragment_shader;
 
@@ -318,8 +319,42 @@ namespace octet { namespace scene {
       fragment_shader.assign((const char*)fs.data(), (const char*)(fs.data() + fs.size()));
     }
 
-    void init(dynarray<ref<param> > &params) {
+    virtual void init(dynarray<ref<param> > &params) {
       shader::init(vertex_shader.data(), fragment_shader.data());
+
+      param_bind_info pbi;
+      pbi.program = get_program();
+
+      for (unsigned i = 0; i != params.size(); ++i) {
+        params[i]->bind(pbi);
+      }
+    }
+  };
+
+  class param_geom_shader : public param_shader {
+    std::string geometry_shader;
+
+  public:
+    RESOURCE_META(param_geom_shader)
+
+      param_geom_shader() {
+    }
+
+    param_geom_shader(const char *vs_url, const char *fs_url, const char *gs_url) {
+      dynarray<uint8_t> vs; 
+      dynarray<uint8_t> gs;
+      dynarray<uint8_t> fs;
+      app_utils::get_url(vs, vs_url);
+      app_utils::get_url(gs, gs_url);
+      app_utils::get_url(fs, fs_url);
+
+      vertex_shader.assign((const char*)vs.data(), (const char*)(vs.data() + vs.size()));
+      geometry_shader.assign((const char*)gs.data(), (const char*)(gs.data() + gs.size()));
+      fragment_shader.assign((const char*)fs.data(), (const char*)(fs.data() + fs.size()));
+    }
+
+    void init(dynarray<ref<param> > &params) {
+      shader::init(vertex_shader.data(), fragment_shader.data(), geometry_shader.data());
 
       param_bind_info pbi;
       pbi.program = get_program();

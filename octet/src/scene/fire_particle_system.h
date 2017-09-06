@@ -58,7 +58,6 @@ namespace octet {
         unsigned vsize = (size + 8) * sizeof(fire_vertex);
         unsigned isize = (size + 8) * sizeof(uint32_t);
         fluid_sim_debug->allocate(vsize, isize);
-        glPointSize(5.0f);
 
         fluid_sim_vel_debug = new mesh();
         fluid_sim_vel_debug->add_attribute(attribute_pos, 3, GL_FLOAT, 0);
@@ -164,7 +163,7 @@ namespace octet {
         add_attribute(attribute_normal, 3, GL_FLOAT, 12);
         add_attribute(attribute_uv, 2, GL_FLOAT, 24);
         add_attribute(attribute_color, 4, GL_FLOAT, 32);
-        set_params(48, 0, 0, GL_TRIANGLES, GL_UNSIGNED_INT);
+        set_params(48, 0, 0, GL_POINTS, GL_UNSIGNED_INT);
 
         set_aabb(size);
         fire_billboard_particles.reserve(bbcap);
@@ -174,8 +173,8 @@ namespace octet {
         free_trail_particle = -1;
         free_particle_animator = -1;
 
-        unsigned vsize = (bbcap * 4 + tpcap * 2) * sizeof(fire_vertex);
-        unsigned isize = (bbcap * 6 + tpcap * 6) * sizeof(uint32_t);
+        unsigned vsize = (bbcap) * sizeof(fire_vertex);
+        unsigned isize = (bbcap) * sizeof(uint32_t);
         mesh::allocate(vsize, isize);
       }
 
@@ -248,7 +247,6 @@ namespace octet {
         dens_prev[IX(x_length / 2, y_length / 8, z_length / 2)] = 200.0f;
       }
 
-      /// Update the vertices for newtonian physics.
       void animate(float time_step) {
         time_step *= 10.0f;
         //float t = rand.get(0.0f, 1.0f);
@@ -391,12 +389,12 @@ namespace octet {
         //unsigned np = billboard_particles.size();
         //unsigned vsize = billboard_particles.capacity() * sizeof(vertex) * 4;
         //unsigned isize = billboard_particles.capacity() * sizeof(uint32_t) * 4;
+        unsigned num_vertices = 0;
+        unsigned num_indices = 0;
         gl_resource::wolock vlock(get_vertices());
         fire_vertex *vtx = (fire_vertex*)vlock.u8();
         gl_resource::wolock ilock(get_indices());
         uint32_t *idx = ilock.u32();
-        unsigned num_vertices = 0;
-        unsigned num_indices = 0;
 
         vec3 cx = cameraToWorld.x().xyz();
         vec3 cy = cameraToWorld.y().xyz();
@@ -404,7 +402,7 @@ namespace octet {
         for (unsigned i = 0; i != fire_billboard_particles.size(); ++i) {
           fire_billboard_particle &p = fire_billboard_particles[i];
           if (p.enabled) {
-            vec2 size = p.size;
+            /*vec2 size = p.size;
             vec3 dx = size.x() * cx;
             vec3 dy = size.y() * cy;
             vec2 bl = p.uv_bottom_left;
@@ -421,7 +419,11 @@ namespace octet {
             idx[3] = num_vertices; idx[4] = num_vertices + 2; idx[5] = num_vertices + 3;
             idx += 6;
             num_vertices += 4;
-            num_indices += 6;
+            num_indices += 6;*/
+            vtx->pos = p.pos; vtx->normal = n; vtx->color = p.color; vtx++;
+            idx[0] = num_vertices;
+            idx++;
+            num_vertices++; num_indices++;
           }
         }
 

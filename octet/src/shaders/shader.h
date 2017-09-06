@@ -12,12 +12,14 @@
 
 namespace octet { namespace shaders {
   class shader : public resource {
+
     GLuint program_;
 
-    void link(GLuint vertex_shader, GLuint fragment_shader) {
+    void link(GLuint vertex_shader, GLuint fragment_shader, GLuint geometry_shader) {
           // assemble the program for use by glUseProgram
       GLuint program = glCreateProgram();
       glAttachShader(program, vertex_shader);
+      glAttachShader(program, geometry_shader);
       glAttachShader(program, fragment_shader);
 
       // standardize the attribute slots (in NVidia's CG you can do this in the shader)
@@ -43,13 +45,44 @@ namespace octet { namespace shaders {
         printf("linked ok\n");
       }
     }
+
+    void link(GLuint vertex_shader, GLuint fragment_shader) {
+      // assemble the program for use by glUseProgram
+      GLuint program = glCreateProgram();
+      glAttachShader(program, vertex_shader);
+      glAttachShader(program, fragment_shader);
+
+      // standardize the attribute slots (in NVidia's CG you can do this in the shader)
+      glBindAttribLocation(program, attribute_pos, "pos");
+      glBindAttribLocation(program, attribute_normal, "normal");
+      glBindAttribLocation(program, attribute_tangent, "tangent");
+      glBindAttribLocation(program, attribute_bitangent, "bitangent");
+      glBindAttribLocation(program, attribute_blendweight, "blendweight");
+      glBindAttribLocation(program, attribute_blendindices, "blendindices");
+      glBindAttribLocation(program, attribute_color, "color");
+      glBindAttribLocation(program, attribute_uv, "uv");
+      glLinkProgram(program);
+
+      program_ = program;
+      GLsizei length;
+      char buf[0x10000];
+      glGetProgramInfoLog(program, sizeof(buf), &length, buf);
+      if (length) {
+        fputs(buf, log("program errors during linking\n"));
+        printf("program errors during linking: check log\n");
+        printf("LOG: %s", buf);
+      }
+      else {
+        printf("linked ok\n");
+      }
+    }
   public:
     shader() {
     }
 
     GLuint program() { return program_; }
   
-    void init(const char *vs, const char *fs) {
+    void init(const char *vs, const char *fs, const char *gs = 0) {
       //printf("creating shader program\n");
 
       GLsizei length;
@@ -62,7 +95,18 @@ namespace octet { namespace shaders {
       if (length) {
         log("Vertex shader error:\n%s\n%s\n\n\n\n", buf, vs);
       }
-    
+
+      GLuint geometry_shader;
+      if (gs) {
+        geometry_shader = glCreateShader(GL_GEOMETRY_SHADER);
+        glShaderSource(geometry_shader, 1, &gs, NULL);
+        glCompileShader(geometry_shader);
+        glGetShaderInfoLog(geometry_shader, sizeof(buf), &length, buf);
+        if (length) {
+          log("Geometry shader error:\n%s\n%s\n\n\n\n", buf, gs);
+        }
+      }
+
       // create our fragment shader and compile it
       GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
       glShaderSource(fragment_shader, 1, &fs, NULL);
@@ -72,7 +116,8 @@ namespace octet { namespace shaders {
         log("Fragment shader error:\n%s\n%s\n\n\n\n", buf, fs);
       }
 
-      link(vertex_shader, fragment_shader);
+      if (gs) link(vertex_shader, fragment_shader, geometry_shader);
+      else    link(vertex_shader, fragment_shader);
     }
 
     /// create a program from pre-compiled binary code. (ie. PS Vita)  

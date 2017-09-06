@@ -36,7 +36,10 @@ typedef struct __GLsync *GLsync;
 // use an enum instead of #defines as this is the 21st century!
 enum {
   GL_ES_VERSION_3_0 = 1,
-  GL_ES_VERSION_2_0 = 1,
+  //GL_ES_VERSION_2_0 = 1,
+
+
+  GL_GEOMETRY_SHADER = 0x8DD9,
 
 #ifdef SKIP_OPENGL_1
   /* OpenGL ES 2.0 */

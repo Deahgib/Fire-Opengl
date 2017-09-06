@@ -501,5 +501,14 @@
     <None Include="..\..\..\shaders\fire.vs">
       <Filter>shader_code</Filter>
     </None>
+    <None Include="..\..\..\shaders\test.gs">
+      <Filter>shader_code</Filter>
+    </None>
+    <None Include="..\..\..\shaders\fire.fs">
+      <Filter>shader_code</Filter>
+    </None>
+    <None Include="..\..\..\shaders\fire.gs">
+      <Filter>shader_code</Filter>
+    </None>
   </ItemGroup>
 </Project>

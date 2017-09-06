@@ -5,13 +5,16 @@ namespace octet {
     ref<mesh_instance> debug_msh_inst; // Density mesh GL_POINTS  debug
     ref<mesh_instance> debug_msh_vel_inst; // Velocity mesh GL_LINES  debug
     ref<mesh_instance> msh_inst; // Particle system Mesh - game output (GL_TRIANGLES)
-    ref<param_shader> fire_shader;
+    ref<param_geom_shader> fire_shader;
     ref<material> fire_material;
     ref<material> debug_material;
 
     ref<fire_particle_system> system;
 
     ref<param_uniform> time_index;
+
+
+    ref<param_uniform> cameraToWorld_index;
 
     ref<param_uniform> overlay_half_size_index;
     ref<param_uniform> overlay_bl_index;
@@ -52,7 +55,7 @@ namespace octet {
       bool using_atlas = true) 
     {
 
-      fire_shader = new param_shader("shaders/fire.vs", "shaders/panning_textured.fs");
+      fire_shader = new param_geom_shader("shaders/fire.vs", "shaders/fire.fs", "shaders/test.gs");
       fire_material = new material(vec4(1, 1, 1, 1), fire_shader);
       //fire_shader->init(fire_material->get_params());
 
@@ -60,6 +63,10 @@ namespace octet {
 
       worldCoord = pos;
       using_atlas_ = using_atlas;
+      
+
+      //atom_t atom_cameraToWorld_index = app_utils::get_atom("time");
+      //cameraToWorld_index = fire_material->add_uniform(NULL, atom_cameraToWorld_index, GL_FLOAT_MAT4, 1, param::stage_fragment);
       
       // Time uniform for panning
       atom_t atom_time_index = app_utils::get_atom("time");
@@ -108,42 +115,10 @@ namespace octet {
     }
   
     void update(camera_instance* ci, float time) {
-      float tex_toggle = r->get(0.0f, 1.0f);
-
-
       fire_particle_system::fire_billboard_particle p;
       memset(&p, 0, sizeof(p));
       //p.pos = vec3p(worldCoord[0] + r->get(-1.0f, 1.0f), worldCoord[1] + r->get(-1.0f, 1.0f), worldCoord[2] + r->get(-1.0f, 1.0f));
       p.pos = vec3p(worldCoord[0] + r->get(-0.1f, 0.1f), worldCoord[1]-1.8f, worldCoord[2]);
-      //p.uv_bottom_left = vec2p(1.0f, 0.0f);
-      //p.uv_top_right = vec2p(0.0f, 1.0f);
-      if(using_atlas_){
-        if (tex_toggle < 0.25f) {
-          p.uv_bottom_left = vec2p(0.0f, 1.0f);
-          p.uv_top_right = vec2p(0.5f, 0.5f);
-        }
-        else if (tex_toggle < 0.5f) {
-          p.uv_bottom_left = vec2p(0.0f, 0.5f);
-          p.uv_top_right = vec2p(0.5f, 0.0f);
-        }
-        else if (tex_toggle < 0.75f) {
-          p.uv_bottom_left = vec2p(0.5f, 1.0f);
-          p.uv_top_right = vec2p(1.0f, 0.5f);
-        }
-        else{
-          p.uv_bottom_left = vec2p(0.5f, 0.5f);
-          p.uv_top_right = vec2p(1.0f, 0.0f);
-        }
-      }
-      else {
-        if (tex_toggle < 0.5f) {
-          p.uv_bottom_left = vec2p(1.0f, 0.0f);
-          p.uv_top_right = vec2p(0.0f, 1.0f);
-        }else{
-          p.uv_bottom_left = vec2p(0.0f, 0.0f);
-          p.uv_top_right = vec2p(1.0f, 1.0f);
-        }
-      }
       p.enabled = true;
       int pidx = system->add_billboard_particle(p);
 
@@ -156,9 +131,11 @@ namespace octet {
       pa.lifetime = 30;
       system->add_particle_animator(pa);
 
+      mat4t cameraToWorld = ci->get_node()->calcModelToWorld();
       //fire_material->set_uniform(time_index, &time, sizeof(time));
+      //fire_material->set_uniform(cameraToWorld_index, cameraToWorld.get(), sizeof(cameraToWorld));
 
-      system->set_cameraToWorld(ci->get_node()->calcModelToWorld());
+      system->set_cameraToWorld(cameraToWorld);
       system->animate(time);
       
       system->update();
