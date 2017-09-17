@@ -1,3 +1,8 @@
+
+Final thesis, Louis Bennette
+Fluid Simulation for Fire Particle Systems using Octet
+https://github.com/Deahgib/Fire-Opengl/blob/master/Bennette-Thesis-print-version.pdf
+
 # octet
 
 Octet is a framework for teaching OpenGL and the rudiments of game programming such
